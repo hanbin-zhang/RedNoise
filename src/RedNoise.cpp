@@ -27,6 +27,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window) {
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        std::cout << "Save images" << std::endl;
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
 	}
