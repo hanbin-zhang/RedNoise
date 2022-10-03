@@ -69,11 +69,6 @@ void handleEvent(SDL_Event event, DrawingWindow &window) {
 	}
 }
 
-
-
-
-
-
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
@@ -84,10 +79,4 @@ int main(int argc, char *argv[]) {
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();
 	}
-    /*glm::vec3 from(1.0, 4.0, 9.2);
-    glm::vec3 to(4.0, 1.0, 9.8);
-    std::vector<glm::vec3> result;
-    result = interpolateThreeElementValues(from, to, 4);
-    for(size_t i=0; i<result.size(); i++) std::cout << result[i].x << " " << result[i].y << " "  << result[i].z << std::endl;*/
-
 }
