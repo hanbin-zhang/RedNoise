@@ -27,11 +27,23 @@ void handleEvent(SDL_Event event, DrawingWindow &window) {
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
-        std::cout << "Save images" << std::endl;
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
 	}
 }
+
+std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
+
+    std::vector<float> result;
+    float  step = (to - from) / float(numberOfValues-1);
+    for (int i = 0; i < numberOfValues; i++) {
+        result.push_back(from + float(i)*step);
+    }
+    return result;
+}
+
+
+
 
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
