@@ -26,9 +26,9 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
     std::vector<float> result2;
     std::vector<float> result3;
 
-    result1 = interpolateSingleFloats(from[0], to[0], numberOfValues);
-    result2 = interpolateSingleFloats(from[1], to[1], numberOfValues);
-    result3 = interpolateSingleFloats(from[2], to[2], numberOfValues);
+    result1 = interpolateSingleFloats(from.x, to.x, numberOfValues);
+    result2 = interpolateSingleFloats(from.y, to.y, numberOfValues);
+    result3 = interpolateSingleFloats(from.z, to.z, numberOfValues);
 
     for (int i = 0; i < numberOfValues; i++) {
         resultV3.emplace_back(result1[i], result2[i], result3[i]);
@@ -38,22 +38,20 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
 
 void draw(DrawingWindow &window) {
 	window.clearPixels();
+
     glm::vec3 topLeft(255, 0, 0);        // red
     glm::vec3 topRight(0, 0, 255);       // blue
     glm::vec3 bottomRight(0, 255, 0);    // green
     glm::vec3 bottomLeft(255, 255, 0);   // yellow
+
     std::vector<glm::vec3> left = interpolateThreeElementValues(topLeft, bottomLeft, int(window.width));
     std::vector<glm::vec3> right = interpolateThreeElementValues(topRight, bottomRight, int(window.width));
-    //std::vector<float> result = interpolateSingleFloats(255, 0, int(window.width));
-    //std::reverse(result.begin(), result.end());
+
 	for (size_t y = 0; y < window.height; y++) {
         std::vector<glm::vec3> current_line = interpolateThreeElementValues(left[int (y)], right[int (y)], int(window.width));
 		for (size_t x = 0; x < window.width; x++) {
-            //float grey_value = result[int (x)];
-			float red = current_line[int (x)].x;
-			float green = current_line[int (x)].y;
-			float blue = current_line[int (x)].z;
-			uint32_t colour = (255 << 24) + (int(red) << 16) + (int(green) << 8) + int(blue);
+			uint32_t colour = (255 << 24) + (int(current_line[int (x)].x) << 16)
+                    + (int(current_line[int (x)].y) << 8) + int(current_line[int (x)].z);
 			window.setPixelColour(x, y, colour);
 		}
 	}
