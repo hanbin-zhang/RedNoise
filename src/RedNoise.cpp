@@ -101,6 +101,8 @@ int main(int argc, char *argv[]) {
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
         Colour colour = Colour(255, 255, 255);
         draw_line(window, CanvasPoint(0, 0), CanvasPoint(WIDTH/2, HEIGHT/2), colour);
-		window.renderFrame();
+        draw_line(window, CanvasPoint(WIDTH/2, 0), CanvasPoint(WIDTH/2, HEIGHT), colour);
+        draw_line(window, CanvasPoint(WIDTH/3, HEIGHT/2), CanvasPoint(WIDTH/3*2, HEIGHT/2), colour);
+        window.renderFrame();
 	}
 }
