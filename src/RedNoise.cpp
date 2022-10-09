@@ -5,6 +5,8 @@
 #include <vector>
 #include <algorithm>
 #include "glm/vec3.hpp"
+#include <CanvasPoint.h>
+#include <Colour.h>
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -34,6 +36,26 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
         resultV3.emplace_back(result1[i], result2[i], result3[i]);
     }
     return resultV3;
+}
+
+uint32_t colour_uint32(const Colour& colour) {
+    return (255 << 24) + (colour.red << 16) + (colour.green << 8) + colour.blue;
+}
+
+void draw_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour) {
+    float x_diff = to.x - from.x;
+    float y_diff = to.y - from.y;
+
+    float numberOfSteps = std::max(abs(x_diff), abs(y_diff));
+    float x_step_size = x_diff / numberOfSteps;
+    float y_step_size = y_diff / numberOfSteps;
+
+    for (float i = 0.0; i < numberOfSteps; ++i) {
+        float x = from.x + i*x_step_size;
+        float y = from.y + i*y_step_size;
+
+        window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
+    }
 }
 
 void draw(DrawingWindow &window) {
@@ -75,8 +97,10 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
-		draw(window);
+		//draw(window);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
+        Colour colour = Colour(255, 255, 255);
+        draw_line(window, CanvasPoint(0, 0), CanvasPoint(WIDTH/2, HEIGHT/2), colour);
 		window.renderFrame();
 	}
 }
