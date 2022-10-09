@@ -7,6 +7,8 @@
 #include "glm/vec3.hpp"
 #include <CanvasPoint.h>
 #include <Colour.h>
+#include <CanvasTriangle.h>
+#include <stdlib.h>
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -58,6 +60,12 @@ void draw_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Co
     }
 }
 
+void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
+    draw_line(window, triangle.v0(), triangle.v1(), colour);
+    draw_line(window, triangle.v1(), triangle.v2(), colour);
+    draw_line(window, triangle.v2(), triangle.v0(), colour);
+}
+
 void draw(DrawingWindow &window) {
 	window.clearPixels();
 
@@ -79,12 +87,23 @@ void draw(DrawingWindow &window) {
 	}
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window) {
+void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
+    Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
+    CanvasTriangle triangle = CanvasTriangle(
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)));
+    triangles.push_back(triangle);
+    colours.push_back(colour);
+}
+
+void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) std::cout << "LEFT" << std::endl;
 		else if (event.key.keysym.sym == SDLK_RIGHT) std::cout << "RIGHT" << std::endl;
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
+        else if (event.key.keysym.sym == SDLK_u) add_triangle(triangles, colours);
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -94,15 +113,19 @@ void handleEvent(SDL_Event event, DrawingWindow &window) {
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
+    std::vector<CanvasTriangle> triangles;
+    std::vector<Colour> colours;
+
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, triangles, colours);
 		//draw(window);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
-        Colour colour = Colour(255, 255, 255);
-        draw_line(window, CanvasPoint(0, 0), CanvasPoint(WIDTH/2, HEIGHT/2), colour);
-        draw_line(window, CanvasPoint(WIDTH/2, 0), CanvasPoint(WIDTH/2, HEIGHT), colour);
-        draw_line(window, CanvasPoint(WIDTH/3, HEIGHT/2), CanvasPoint(WIDTH/3*2, HEIGHT/2), colour);
+
+        for(int i = 0; i < int(triangles.size()); ++i) {
+            draw_stroked_triangles(window, triangles[i], colours[i]);
+        }
+
         window.renderFrame();
 	}
 }
