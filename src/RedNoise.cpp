@@ -9,6 +9,7 @@
 #include <Colour.h>
 #include <CanvasTriangle.h>
 #include <stdlib.h>
+#include <map>
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -60,10 +61,75 @@ void draw_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Co
     }
 }
 
+void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start, CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
+    /*CanvasPoint from_start = vertices[0];
+    CanvasPoint to_start = vertices[0];
+
+    CanvasPoint from_end = mid_point;
+    CanvasPoint to_end = vertices[1];*/
+
+    float x_diff_to = from_end.x - to_start.x;
+    float y_diff_to = from_end.y - to_start.y;
+
+    float x_diff_from = to_end.x - from_start.x;
+    float y_diff_from = to_end.y - from_start.y;
+
+    float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
+    float numberOfSteps_y = std::max(abs(y_diff_from), abs(y_diff_to));
+    float numberOfSteps = std::max(numberOfSteps_x, numberOfSteps_y);
+
+    float x_step_size_from = x_diff_from / numberOfSteps;
+    float y_step_size_from = y_diff_from / numberOfSteps;
+    float x_step_size_to = x_diff_to / numberOfSteps;
+    float y_step_size_to = y_diff_to / numberOfSteps;
+
+    for (float i = 0.0; i < numberOfSteps; ++i) {
+        float x_from = from_start.x + i * x_step_size_from;
+        float y_from = from_start.y + i * y_step_size_from;
+
+        float x_to = to_start.x + i * x_step_size_to;
+        float y_to = to_start.y + i * y_step_size_to;
+
+        draw_line(window, CanvasPoint(x_from, y_from), CanvasPoint(x_to, y_to), colour);
+    }
+}
+
+CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
+    CanvasPoint mid_point;
+    mid_point.y = vertices[1].y;
+
+    auto top_bottom_x_diff = float(abs(int(vertices[0].x - vertices[2].x)));
+    auto top_bottom_y_diff = float (abs(int(vertices[0].y - vertices[2].y)));
+
+    float mid_x_diff = top_bottom_x_diff/top_bottom_y_diff * float(abs(int(vertices[0].y - vertices[1].y)));
+
+    if (vertices[0].x >= vertices[2].x) mid_point.x = vertices[0].x - mid_x_diff;
+    else mid_point.x = vertices[0].x + mid_x_diff;
+    return mid_point;
+}
+
+void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
+    std::array<CanvasPoint, 3> vertices = triangle.vertices;
+    while (true) {
+        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
+        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
+        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
+        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
+    }
+
+    CanvasPoint mid_point = find_mid_point(vertices);
+
+    // draw top triangle
+    fill_half_triangle(window, vertices[0], vertices[0], mid_point, vertices[1], colour);
+    // draw bottom triangle
+    fill_half_triangle(window, mid_point, vertices[1], vertices[2], vertices[2], colour);
+}
+
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
     draw_line(window, triangle.v0(), triangle.v1(), colour);
     draw_line(window, triangle.v1(), triangle.v2(), colour);
     draw_line(window, triangle.v2(), triangle.v0(), colour);
+    fill_triangle(window, triangle, colour);
 }
 
 void draw(DrawingWindow &window) {
@@ -115,7 +181,7 @@ int main(int argc, char *argv[]) {
 	SDL_Event event;
     std::vector<CanvasTriangle> triangles;
     std::vector<Colour> colours;
-
+    //add_triangle(triangles, colours);
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, triangles, colours);
@@ -127,5 +193,6 @@ int main(int argc, char *argv[]) {
         }
 
         window.renderFrame();
+        //break;
 	}
 }
