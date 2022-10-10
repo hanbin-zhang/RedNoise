@@ -10,9 +10,16 @@
 #include <CanvasTriangle.h>
 #include <stdlib.h>
 #include <map>
+#include <TexturePoint.h>
+#include <TextureMap.h>
 
 #define WIDTH 320
 #define HEIGHT 240
+
+struct {
+    CanvasPoint from;
+    CanvasPoint to;
+} line;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -61,12 +68,48 @@ void draw_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Co
     }
 }
 
-void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start, CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
-    /*CanvasPoint from_start = vertices[0];
-    CanvasPoint to_start = vertices[0];
+void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, TextureMap textureMap) {
+    float x_diff = to.x - from.x;
+    float y_diff = to.y - from.y;
 
-    CanvasPoint from_end = mid_point;
-    CanvasPoint to_end = vertices[1];*/
+    float numberOfSteps = std::max(abs(x_diff), abs(y_diff));
+    float x_step_size = x_diff / numberOfSteps;
+    float y_step_size = y_diff / numberOfSteps;
+
+    float texture_x_diff = to.texturePoint.x - from.texturePoint.x;
+    float texture_y_diff = to.texturePoint.y - from.texturePoint.y;
+
+    //float numberOfStepsTexture = std::max(abs(texture_x_diff), abs(texture_y_diff));
+    float x_step_size_Texture = texture_x_diff / numberOfSteps;
+    float y_step_size_Texture = texture_y_diff / numberOfSteps;
+
+    for (float i = 0.0; i < numberOfSteps; ++i) {
+        float x = from.x + i*x_step_size;
+        float y = from.y + i*y_step_size;
+
+        float texture_x = from.texturePoint.x + i*x_step_size_Texture;
+        float texture_y = from.texturePoint.y + i*y_step_size_Texture;
+
+        int texture_x_int = int (texture_x) % int(textureMap.width);
+        int texture_y_int = int (texture_y) % int(textureMap.height);
+
+        window.setPixelColour(size_t(round(x)), size_t(round(y)),
+                              textureMap.pixels[textureMap.width*texture_y_int-(textureMap.width-texture_x_int)]);
+    }
+}
+
+/*std::array<float, 2> calculate_step_size(std::array<float, 2>) {
+    float x_diff = to.x - from.x;
+    float y_diff = to.y - from.y;
+
+    float numberOfSteps = std::max(abs(x_diff), abs(y_diff));
+    float x_step_size = x_diff / numberOfSteps;
+    float y_step_size = y_diff / numberOfSteps;
+
+    return std::array<float, 2> {x_step_size, y_step_size};
+}*/
+
+void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start, CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
 
     float x_diff_to = from_end.x - to_start.x;
     float y_diff_to = from_end.y - to_start.y;
@@ -91,6 +134,88 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoi
         float y_to = to_start.y + i * y_step_size_to;
 
         draw_line(window, CanvasPoint(x_from, y_from), CanvasPoint(x_to, y_to), colour);
+    }
+}
+
+std::vector<CanvasPoint> interpolatingCanvasPoint(CanvasPoint from, CanvasPoint to, float step_number) {
+    float x_diff = from.x - to.x;
+    float y_diff = from.y - to.y;
+
+    float x_step_size = x_diff / step_number;
+    float y_step_size = y_diff/ step_number;
+
+    float x_diff_texture = from.texturePoint.x - to.texturePoint.x;
+    float y_diff_texture = from.y - to.y;
+
+    float x_step_size_texture = x_diff_texture / step_number;
+    float y_step_size_texture = y_diff_texture / step_number;
+
+    std::vector<CanvasPoint> result;
+    for (float i = 0.0; i < step_number; ++i) {
+        float x_from = from.x + i * x_step_size;
+        float y_from = from.y + i * y_step_size;
+
+        float x_texture = from.texturePoint.x + i * x_step_size_texture;
+        float y_texture = to.texturePoint.y + i * y_step_size_texture;
+
+        CanvasPoint canvasPoint = CanvasPoint(x_from, y_from);
+
+        from.texturePoint = TexturePoint(x_texture, y_texture);
+        to.texturePoint = TexturePoint(x_texture, y_texture);
+
+        result.push_back(canvasPoint);
+    }
+    return result;
+}
+
+void fill_half_texture_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start, CanvasPoint from_end, CanvasPoint to_end, TextureMap textureMap) {
+
+    float x_diff_to = from_end.x - to_start.x;
+    float y_diff_to = from_end.y - to_start.y;
+
+    float x_diff_from = to_end.x - from_start.x;
+    float y_diff_from = to_end.y - from_start.y;
+
+    float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
+    float numberOfSteps_y = std::max(abs(y_diff_from), abs(y_diff_to));
+    float numberOfSteps = std::max(numberOfSteps_x, numberOfSteps_y);
+
+    float x_step_size_from = x_diff_from / numberOfSteps;
+    float y_step_size_from = y_diff_from / numberOfSteps;
+    float x_step_size_to = x_diff_to / numberOfSteps;
+    float y_step_size_to = y_diff_to / numberOfSteps;
+
+    float x_diff_to_texture = from_end.texturePoint.x - to_start.texturePoint.x;
+    float y_diff_to_texture = from_end.y - to_start.y;
+
+    float x_diff_from_texture = to_end.texturePoint.x - from_start.texturePoint.x;
+    float y_diff_from_texture = to_end.texturePoint.y - from_start.texturePoint.y;
+
+    float x_step_size_from_texture = x_diff_from_texture / numberOfSteps;
+    float y_step_size_from_texture = y_diff_from_texture / numberOfSteps;
+    float x_step_size_to_texture = x_diff_to_texture / numberOfSteps;
+    float y_step_size_to_texture = y_diff_to_texture / numberOfSteps;
+
+    for (float i = 0.0; i < numberOfSteps; ++i) {
+        float x_from = from_start.x + i * x_step_size_from;
+        float y_from = from_start.y + i * y_step_size_from;
+
+        float x_to = to_start.x + i * x_step_size_to;
+        float y_to = to_start.y + i * y_step_size_to;
+
+        float x_from_texture = from_start.texturePoint.x + i * x_step_size_from_texture;
+        float y_from_texture = from_start.texturePoint.y + i * y_step_size_from_texture;
+
+        float x_to_texture = to_start.texturePoint.x + i * x_step_size_to_texture;
+        float y_to_texture = to_start.texturePoint.y + i * y_step_size_to_texture;
+
+        CanvasPoint from = CanvasPoint(x_from, y_from);
+        CanvasPoint to = CanvasPoint(x_to, y_to);
+
+        from.texturePoint = TexturePoint(x_from_texture, y_from_texture);
+        to.texturePoint = TexturePoint(x_to_texture, y_to_texture);
+
+        draw_texture_line(window,from, to, textureMap);
     }
 }
 
@@ -129,6 +254,12 @@ void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, cons
     draw_line(window, triangle.v0(), triangle.v1(), colour);
     draw_line(window, triangle.v1(), triangle.v2(), colour);
     draw_line(window, triangle.v2(), triangle.v0(), colour);
+}
+
+void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
+    draw_line(window, triangle.v0(), triangle.v1(), colour);
+    draw_line(window, triangle.v1(), triangle.v2(), colour);
+    draw_line(window, triangle.v2(), triangle.v0(), colour);
     fill_triangle(window, triangle, colour);
 }
 
@@ -163,6 +294,30 @@ void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& c
     colours.push_back(colour);
 }
 
+void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
+    std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
+    while (true) {
+        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
+        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
+        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
+        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
+    }
+
+    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
+    CanvasPoint midpoint = find_mid_point(vertices);
+    std::array<CanvasPoint, 3> texture_vertices{
+        CanvasPoint(vertices[0].texturePoint.x, vertices[0].texturePoint.y),
+        CanvasPoint(vertices[1].texturePoint.x, vertices[1].texturePoint.y),
+        CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
+    };
+    CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
+    midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
+
+    fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap);
+    fill_half_texture_triangle(window, midpoint, vertices[1], vertices[2], vertices[2], textureMap);
+
+}
+
 void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) std::cout << "LEFT" << std::endl;
@@ -182,16 +337,27 @@ int main(int argc, char *argv[]) {
     std::vector<CanvasTriangle> triangles;
     std::vector<Colour> colours;
     //add_triangle(triangles, colours);
+
+    CanvasPoint v0 = CanvasPoint(160, 10);
+    CanvasPoint v1 = CanvasPoint(300, 230);
+    CanvasPoint v2 = CanvasPoint(10, 150);
+    v0.texturePoint = TexturePoint(195, 5);
+    v1.texturePoint = TexturePoint(395, 380);
+    v2.texturePoint = TexturePoint(65, 330);
+    CanvasTriangle texture_triangle = CanvasTriangle(v0, v1, v2);
+
+    TextureMap textureMap = TextureMap("texture.ppm");
+
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, triangles, colours);
 		//draw(window);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 
-        for(int i = 0; i < int(triangles.size()); ++i) {
-            draw_stroked_triangles(window, triangles[i], colours[i]);
-        }
-
+        /*for(int i = 0; i < int(triangles.size()); ++i) {
+            draw_filled_triangles(window, triangles[i], colours[i]);
+        }*/
+        textureMapper(window,  texture_triangle, textureMap);
         window.renderFrame();
         //break;
 	}
