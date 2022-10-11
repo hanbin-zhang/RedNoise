@@ -12,6 +12,7 @@
 #include <map>
 #include <TexturePoint.h>
 #include <TextureMap.h>
+#include "glm/mat3x3.hpp"
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -176,27 +177,33 @@ void fill_half_texture_triangle(DrawingWindow &window, CanvasPoint from_start, C
     float x_diff_from = to_end.x - from_start.x;
     float y_diff_from = to_end.y - from_start.y;
 
-    float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
-    float numberOfSteps_y = std::max(abs(y_diff_from), abs(y_diff_to));
-    float numberOfSteps = std::max(numberOfSteps_x, numberOfSteps_y);
-
-    float x_step_size_from = x_diff_from / numberOfSteps;
-    float y_step_size_from = y_diff_from / numberOfSteps;
-    float x_step_size_to = x_diff_to / numberOfSteps;
-    float y_step_size_to = y_diff_to / numberOfSteps;
-
     float x_diff_to_texture = from_end.texturePoint.x - to_start.texturePoint.x;
     float y_diff_to_texture = from_end.y - to_start.y;
 
     float x_diff_from_texture = to_end.texturePoint.x - from_start.texturePoint.x;
     float y_diff_from_texture = to_end.texturePoint.y - from_start.texturePoint.y;
 
+    float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
+    float numberOfSteps_y = std::max(abs(y_diff_from), abs(y_diff_to));
+    float numberOfSteps_x_texture = std::max(abs(x_diff_from_texture), abs(x_diff_to_texture));
+    float numberOfSteps_y_texture = std::max(abs(y_diff_from_texture), abs(y_diff_to_texture));
+    float numberOfSteps1 = std::max(numberOfSteps_x, numberOfSteps_y);
+    float numberOfSteps2 = std::max(numberOfSteps_x_texture, numberOfSteps_y_texture);
+    float numberOfSteps = std::max(numberOfSteps1, numberOfSteps2);
+
+    float x_step_size_from = x_diff_from / numberOfSteps;
+    float y_step_size_from = y_diff_from / numberOfSteps;
+    float x_step_size_to = x_diff_to / numberOfSteps;
+    float y_step_size_to = y_diff_to / numberOfSteps;
+
+
+
     float x_step_size_from_texture = x_diff_from_texture / numberOfSteps;
     float y_step_size_from_texture = y_diff_from_texture / numberOfSteps;
     float x_step_size_to_texture = x_diff_to_texture / numberOfSteps;
     float y_step_size_to_texture = y_diff_to_texture / numberOfSteps;
 
-    for (float i = 0.0; i < numberOfSteps; ++i) {
+    for (float i = 0.0; i <= numberOfSteps; ++i) {
         float x_from = from_start.x + i * x_step_size_from;
         float y_from = from_start.y + i * y_step_size_from;
 
@@ -247,7 +254,7 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     // draw top triangle
     fill_half_triangle(window, vertices[0], vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
-    fill_half_triangle(window, mid_point, vertices[1], vertices[2], vertices[2], colour);
+    fill_half_triangle(window,  vertices[2], vertices[2], mid_point, vertices[1],colour);
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
@@ -311,10 +318,14 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
         CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
     };
     CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
+    std::cout << vertices[0] << std::endl;
+    std::cout << vertices[1] << std::endl;
+    std::cout << vertices[2] << std::endl;
+
     midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
 
     fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap);
-    fill_half_texture_triangle(window, midpoint, vertices[1], vertices[2], vertices[2], textureMap);
+    fill_half_texture_triangle(window,  vertices[2], vertices[2],midpoint, vertices[1], textureMap);
 
 }
 
@@ -329,6 +340,37 @@ void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTrian
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
 	}
+}
+
+glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
+    glm::mat3x3 reverse_matrix;
+    int determinant;
+    for(int i = 0; i < 3; i++) {
+        determinant = determinant + (mat[0][i] * (mat[1][(i + 1) % 3] * mat[2][(i + 2) % 3] -
+                                                  mat[1][(i + 2) % 3] * mat[2][(i + 1) % 3]));
+        std::cout << determinant << std::endl;
+    }
+    std::cout << determinant << std::endl;
+    for(int i = 0; i < 3; i++){
+        for(int j = 0; j < 3; j++){
+            reverse_matrix[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3])) / determinant;
+        }
+    }
+    return reverse_matrix;
+}
+
+glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
+    glm::mat3x3 sdl_matrix = glm::mat3x3(triangle.v0().x, triangle.v1().x, triangle.v2().x,
+                                         triangle.v0().y, triangle.v1().y, triangle.v2().y,
+                                         1.0, 1.0, 1.0);
+    glm::mat3x3 texture_matrix = glm::mat3x3(triangle.v0().texturePoint.x, triangle.v1().texturePoint.x, triangle.v2().texturePoint.x,
+                                         triangle.v0().texturePoint.y, triangle.v1().texturePoint.y, triangle.v2().texturePoint.y,
+                                         1.0, 1.0, 1.0);
+    glm::mat3x3 sdl_mtx_inverse;
+
+
+
+    return reverse_mtx(sdl_matrix);
 }
 
 int main(int argc, char *argv[]) {
@@ -347,7 +389,11 @@ int main(int argc, char *argv[]) {
     CanvasTriangle texture_triangle = CanvasTriangle(v0, v1, v2);
 
     TextureMap textureMap = TextureMap("texture.ppm");
-
+    //textureMapper(window,  texture_triangle, textureMap);
+    glm::mat3x3 matrix = calculate_affine_mtx(texture_triangle);
+    std::cout << matrix[0][0] << ", " << matrix[0][1] << ", "  << matrix[0][2] << std::endl;
+    std::cout << matrix[1][0] << ", "<< matrix[1][1] << ", "  << matrix[1][2] << std::endl;
+    std::cout << matrix[2][0]<< ", " << matrix[2][1]   << ", "<< matrix[2][2] << std::endl;
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, triangles, colours);
@@ -357,7 +403,7 @@ int main(int argc, char *argv[]) {
         /*for(int i = 0; i < int(triangles.size()); ++i) {
             draw_filled_triangles(window, triangles[i], colours[i]);
         }*/
-        textureMapper(window,  texture_triangle, textureMap);
+
         window.renderFrame();
         //break;
 	}
