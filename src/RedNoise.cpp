@@ -171,7 +171,7 @@ void fill_half_texture_triangle(DrawingWindow &window,
                                 TextureMap textureMap, glm::mat3x3 affine_matrix) {
 
     float x_diff_to_texture = from_end.texturePoint.x - to_start.texturePoint.x;
-    float y_diff_to_texture = from_end.y - to_start.y;
+    float y_diff_to_texture = from_end.texturePoint.y - to_start.texturePoint.y;
 
     float x_diff_from_texture = to_end.texturePoint.x - from_start.texturePoint.x;
     float y_diff_from_texture = to_end.texturePoint.y - from_start.texturePoint.y;
@@ -322,7 +322,7 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
         else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
     }
 
-    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
+
     CanvasPoint midpoint = find_mid_point(vertices);
     std::array<CanvasPoint, 3> texture_vertices{
         CanvasPoint(vertices[0].texturePoint.x, vertices[0].texturePoint.y),
@@ -330,15 +330,14 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
         CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
     };
     CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
-    std::cout << vertices[0] << std::endl;
-    std::cout << vertices[1] << std::endl;
-    std::cout << vertices[2] << std::endl;
+
 
     midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
+    //std::cout << midpoint.texturePoint << std::endl;
     glm::mat3x3 affineMtx = calculate_affine_mtx(canvasTriangle);
     fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap, affineMtx);
-    fill_half_texture_triangle(window,  vertices[2], vertices[2],midpoint, vertices[1], textureMap, affineMtx);
-
+    fill_half_texture_triangle(window,  midpoint, vertices[1], vertices[2], vertices[2],textureMap, affineMtx);
+    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
 }
 
 void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
@@ -387,7 +386,7 @@ int main(int argc, char *argv[]) {
         /*for(int i = 0; i < int(triangles.size()); ++i) {
             draw_filled_triangles(window, triangles[i], colours[i]);
         }*/
-
+        textureMapper(window,  texture_triangle, textureMap);
         window.renderFrame();
         //break;
 	}
