@@ -54,38 +54,43 @@ std::map<std::string, Colour> read_colour_palette(const std::string& file_name) 
     while (getline (MyReadFile, current_line)) {
         if (current_line.compare(0, 6, "newmtl")==0) {
             current_colour_string = split(current_line, ' ')[1];
-            std::cout << current_colour_string << std::endl;
         } else if (current_line.compare(0, 2, "Kd")==0) {
             std::vector<std::string> rgb_values = split(current_line, ' ');
             colour_map[current_colour_string] = Colour(current_colour_string,
                                                        int(std::stof(rgb_values[1])*255.0),
                                                        int(std::stof(rgb_values[2])*255.0),
                                                        int(std::stof(rgb_values[3])*255.0));
-            std::cout << colour_map[current_colour_string] << std::endl;
         }
     }
     return colour_map;
 }
 
-std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name, float scaling) {
+std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
+                                          const std::string& colour_file_name,
+                                          float scaling) {
 
     std::string current_line;
     std::ifstream MyReadFile(file_name);
     std::vector<glm::vec3> vertices;
     std::vector<ModelTriangle> triangles;
+    Colour current_colour;
+    std::map<std::string, Colour> colour_palette = read_colour_palette(colour_file_name);
 
     while (getline (MyReadFile, current_line)) {
         if (current_line[0] == 'v') {
             //put a vertex on to the list
             std::vector<std::string> vertices_string = split(current_line, ' ');
-            vertices.emplace_back(std::stof(vertices_string[1])*scaling,
-                                  std::stof(vertices_string[2])*scaling,
-                                  std::stof(vertices_string[3])*scaling);
+            vertices.emplace_back(std::stof(vertices_string[1]) * scaling,
+                                  std::stof(vertices_string[2]) * scaling,
+                                  std::stof(vertices_string[3]) * scaling);
 
+        } else if (current_line.compare(0, 6, "usemtl")==0) {
+            current_colour = colour_palette[split(current_line, ' ')[1]];
         } else if (current_line[0] == 'f') {
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
+            current_triangle.colour = current_colour;
             for (int i = 1; i < int(facets_string.size()); ++i) {
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
                 //std::cout << facets_vertex_string[0] << std::endl;
@@ -320,7 +325,7 @@ glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
     determinant += (mat[0][1] * (mat[1][(1 + 1) % 3] * mat[2][(1 + 2) % 3] - mat[1][(1 + 2) % 3] * mat[2][(1 + 1) % 3]));
     determinant += (mat[0][2] * (mat[1][(2 + 1) % 3] * mat[2][(2 + 2) % 3] - mat[1][(2 + 2) % 3] * mat[2][(2 + 1) % 3]));
 
-    //std::cout << determinant << std::endl;
+
     for(int i = 0; i < 3; i++){
         for(int j = 0; j < 3; j++){
             reverse_matrix[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3])) / determinant;
@@ -362,7 +367,7 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
 
 
     midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
-    //std::cout << midpoint.texturePoint << std::endl;
+
     glm::mat3x3 affineMtx = calculate_affine_mtx(canvasTriangle);
     fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap, affineMtx);
     fill_half_texture_triangle(window,  midpoint, vertices[1], vertices[2], vertices[2],textureMap, affineMtx);
@@ -385,12 +390,12 @@ void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTrian
 
 
 int main(int argc, char *argv[]) {
-    std::map<std::string, Colour> colour_map = read_colour_palette("cornell-box.mtl");
-    for (auto const& x : colour_map)
+    std::vector<ModelTriangle> triangles = read_OBJ_files("cornell-box.obj",
+                                                          "cornell-box.mtl",
+                                                          0.35);
+    for (ModelTriangle x : triangles)
     {
-        std::cout << x.first  // string (key)
-                  << ':'
-                  << x.second // string's value
+        std::cout << x.colour  // string (key)
                   << std::endl;
     }
 	/*DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
