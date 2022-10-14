@@ -1,26 +1,21 @@
 #include <CanvasTriangle.h>
 #include <DrawingWindow.h>
 #include <Utils.h>
-#include <fstream>
 #include <vector>
 #include <algorithm>
 #include "glm/vec3.hpp"
 #include <CanvasPoint.h>
 #include <Colour.h>
-#include <CanvasTriangle.h>
 #include <stdlib.h>
 #include <map>
 #include <TexturePoint.h>
 #include <TextureMap.h>
 #include "glm/mat3x3.hpp"
+#include <iostream>
+#include "ModelTriangle.h"
 
 #define WIDTH 320
 #define HEIGHT 240
-
-struct {
-    CanvasPoint from;
-    CanvasPoint to;
-} line;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -49,6 +44,39 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
     return resultV3;
 }
 
+std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name, float scaling) {
+
+    std::string current_line;
+    std::ifstream MyReadFile(file_name);
+    std::vector<glm::vec3> vertices;
+    std::vector<ModelTriangle> triangles;
+
+    while (getline (MyReadFile, current_line)) {
+        if (current_line[0] == 'v') {
+            //put a vertex on to the list
+            std::vector<std::string> vertices_string = split(current_line, ' ');
+            vertices.emplace_back(std::stof(vertices_string[1])*scaling,
+                                  std::stof(vertices_string[2])*scaling,
+                                  std::stof(vertices_string[3])*scaling);
+
+        } else if (current_line[0] == 'f') {
+            // add a facet triangle
+            std::vector<std::string> facets_string = split(current_line, ' ');
+            ModelTriangle current_triangle;
+            for (int i = 1; i < int(facets_string.size()); ++i) {
+                std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
+                //std::cout << facets_vertex_string[0] << std::endl;
+                current_triangle.vertices[i-1] = vertices[std::stoi(facets_vertex_string[0])-1];
+            }
+
+            triangles.push_back(current_triangle);
+        }
+    }
+
+    MyReadFile.close();
+    return triangles;
+}
+
 uint32_t colour_uint32(const Colour& colour) {
     return (255 << 24) + (colour.red << 16) + (colour.green << 8) + colour.blue;
 }
@@ -70,7 +98,6 @@ void draw_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Co
 }
 
 void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, TextureMap textureMap, glm::mat3x3 affineMtx) {
-
 
     float texture_x_diff = to.texturePoint.x - from.texturePoint.x;
     float texture_y_diff = to.texturePoint.y - from.texturePoint.y;
@@ -123,7 +150,7 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoi
     float x_step_size_to = x_diff_to / numberOfSteps;
     float y_step_size_to = y_diff_to / numberOfSteps;
 
-    for (float i = 0.0; i < numberOfSteps; ++i) {
+    for (float i = 0.0; i <= numberOfSteps; ++i) {
         float x_from = from_start.x + i * x_step_size_from;
         float y_from = from_start.y + i * y_step_size_from;
 
@@ -134,31 +161,22 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoi
     }
 }
 
-std::vector<CanvasPoint> interpolatingCanvasPoint(CanvasPoint from, CanvasPoint to, float step_number) {
+std::vector<CanvasPoint> interpolatingCanvasPoint(CanvasPoint from, CanvasPoint to, float stepSize) {
     float x_diff = from.x - to.x;
     float y_diff = from.y - to.y;
 
-    float x_step_size = x_diff / step_number;
-    float y_step_size = y_diff/ step_number;
-
-    float x_diff_texture = from.texturePoint.x - to.texturePoint.x;
-    float y_diff_texture = from.y - to.y;
-
-    float x_step_size_texture = x_diff_texture / step_number;
-    float y_step_size_texture = y_diff_texture / step_number;
+    float x_step_size = x_diff / stepSize;
+    float y_step_size = y_diff / stepSize;
 
     std::vector<CanvasPoint> result;
-    for (float i = 0.0; i < step_number; ++i) {
+
+    for (float i = 0.0; i < stepSize; ++i) {
         float x_from = from.x + i * x_step_size;
         float y_from = from.y + i * y_step_size;
 
-        float x_texture = from.texturePoint.x + i * x_step_size_texture;
-        float y_texture = to.texturePoint.y + i * y_step_size_texture;
-
         CanvasPoint canvasPoint = CanvasPoint(x_from, y_from);
 
-        from.texturePoint = TexturePoint(x_texture, y_texture);
-        to.texturePoint = TexturePoint(x_texture, y_texture);
+
 
         result.push_back(canvasPoint);
     }
@@ -176,10 +194,8 @@ void fill_half_texture_triangle(DrawingWindow &window,
     float x_diff_from_texture = to_end.texturePoint.x - from_start.texturePoint.x;
     float y_diff_from_texture = to_end.texturePoint.y - from_start.texturePoint.y;
 
-
     float numberOfSteps_x_texture = std::max(abs(x_diff_from_texture), abs(x_diff_to_texture));
     float numberOfSteps_y_texture = std::max(abs(y_diff_from_texture), abs(y_diff_to_texture));
-
     float numberOfSteps = std::max(numberOfSteps_x_texture, numberOfSteps_y_texture);
 
     float x_step_size_from_texture = x_diff_from_texture / numberOfSteps;
@@ -234,6 +250,7 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     fill_half_triangle(window, vertices[0], vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
     fill_half_triangle(window,  vertices[2], vertices[2], mid_point, vertices[1],colour);
+
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
@@ -370,12 +387,8 @@ int main(int argc, char *argv[]) {
     v2.texturePoint = TexturePoint(65, 330);
     CanvasTriangle texture_triangle = CanvasTriangle(v0, v1, v2);
 
-    TextureMap textureMap = TextureMap("texture.ppm");
+    //TextureMap textureMap = TextureMap("texture.ppm");
 
-    /*std::cout << matrix[0][0] << ", " << matrix[0][1] << ", "  << matrix[0][2] << std::endl;
-    std::cout << matrix[1][0] << ", "<< matrix[1][1] << ", "  << matrix[1][2] << std::endl;
-    std::cout << matrix[2][0]<< ", " << matrix[2][1]   << ", "<< matrix[2][2] << std::endl;*/
-    //exit(1);
 	while (true) {
 
 		// We MUST poll for events - otherwise the window will freeze !
@@ -383,10 +396,10 @@ int main(int argc, char *argv[]) {
 		//draw(window);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 
-        /*for(int i = 0; i < int(triangles.size()); ++i) {
+        for(int i = 0; i < int(triangles.size()); ++i) {
             draw_filled_triangles(window, triangles[i], colours[i]);
-        }*/
-        textureMapper(window,  texture_triangle, textureMap);
+        }
+        //textureMapper(window,  texture_triangle, textureMap);
         window.renderFrame();
         //break;
 	}
