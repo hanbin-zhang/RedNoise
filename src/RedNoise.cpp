@@ -13,6 +13,7 @@
 #include "glm/mat3x3.hpp"
 #include <iostream>
 #include "ModelTriangle.h"
+#include <map> //
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -42,6 +43,28 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
         resultV3.emplace_back(result1[i], result2[i], result3[i]);
     }
     return resultV3;
+}
+
+std::map<std::string, Colour> read_colour_palette(const std::string& file_name) {
+    std::string current_line;
+    std::ifstream MyReadFile(file_name);
+    std::string current_colour_string;
+    std::map<std::string, Colour> colour_map;
+
+    while (getline (MyReadFile, current_line)) {
+        if (current_line.compare(0, 6, "newmtl")==0) {
+            current_colour_string = split(current_line, ' ')[1];
+            std::cout << current_colour_string << std::endl;
+        } else if (current_line.compare(0, 2, "Kd")==0) {
+            std::vector<std::string> rgb_values = split(current_line, ' ');
+            colour_map[current_colour_string] = Colour(current_colour_string,
+                                                       int(std::stof(rgb_values[1])*255.0),
+                                                       int(std::stof(rgb_values[2])*255.0),
+                                                       int(std::stof(rgb_values[3])*255.0));
+            std::cout << colour_map[current_colour_string] << std::endl;
+        }
+    }
+    return colour_map;
 }
 
 std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name, float scaling) {
@@ -121,17 +144,6 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
                               textureMap.pixels[textureMap.width*texture_y_int-(textureMap.width-texture_x_int)]);
     }
 }
-
-/*std::array<float, 2> calculate_step_size(std::array<float, 2>) {
-    float x_diff = to.x - from.x;
-    float y_diff = to.y - from.y;
-
-    float numberOfSteps = std::max(abs(x_diff), abs(y_diff));
-    float x_step_size = x_diff / numberOfSteps;
-    float y_step_size = y_diff / numberOfSteps;
-
-    return std::array<float, 2> {x_step_size, y_step_size};
-}*/
 
 void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start, CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
 
@@ -373,7 +385,15 @@ void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTrian
 
 
 int main(int argc, char *argv[]) {
-	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
+    std::map<std::string, Colour> colour_map = read_colour_palette("cornell-box.mtl");
+    for (auto const& x : colour_map)
+    {
+        std::cout << x.first  // string (key)
+                  << ':'
+                  << x.second // string's value
+                  << std::endl;
+    }
+	/*DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<CanvasTriangle> triangles;
     std::vector<Colour> colours;
@@ -402,5 +422,5 @@ int main(int argc, char *argv[]) {
         //textureMapper(window,  texture_triangle, textureMap);
         window.renderFrame();
         //break;
-	}
+	}*/
 }
