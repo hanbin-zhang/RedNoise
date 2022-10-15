@@ -304,6 +304,34 @@ void draw(DrawingWindow &window) {
 	}
 }
 
+CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
+                                       glm::vec3 vertexPosition,
+                                       float focalLength,
+                                       float scaling) {
+    float camera_vertex_length = abs(cameraPosition.z - vertexPosition.z);
+    float u = scaling*focalLength * (vertexPosition.x-cameraPosition.x) / camera_vertex_length;
+    float v = -1*scaling*focalLength * (vertexPosition.y-cameraPosition.y) / camera_vertex_length;
+    return {u+float(WIDTH)/2, v+float(HEIGHT)/2};
+}
+
+void wire_frame_render(DrawingWindow &window,
+                       const std::vector<ModelTriangle>& model_triangles,
+                       glm::vec3 cameraPosition,
+                       float focalLength,
+                       float image_plane_scale) {
+    for (const auto& triangle : model_triangles) {
+        std::vector<CanvasPoint> image_plane_triangle_vertices;
+        for (auto vertex : triangle.vertices) {
+            CanvasPoint sdl_vertex = getCanvasIntersectionPoint(cameraPosition, vertex, focalLength, image_plane_scale);
+            image_plane_triangle_vertices.push_back(sdl_vertex);
+        }
+        CanvasTriangle image_plane_triangle = CanvasTriangle(image_plane_triangle_vertices[0],
+                                                             image_plane_triangle_vertices[1],
+                                                             image_plane_triangle_vertices[2]);
+        draw_stroked_triangles(window, image_plane_triangle, Colour(255, 255, 255));
+    }
+}
+
 void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
     Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
     CanvasTriangle triangle = CanvasTriangle(
@@ -374,58 +402,32 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
     draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
+void handleEvent(SDL_Event event, DrawingWindow &window) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) std::cout << "LEFT" << std::endl;
 		else if (event.key.keysym.sym == SDLK_RIGHT) std::cout << "RIGHT" << std::endl;
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
-        else if (event.key.keysym.sym == SDLK_u) add_triangle(triangles, colours);
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
 	}
 }
 
-
-
 int main(int argc, char *argv[]) {
-    std::vector<ModelTriangle> triangles = read_OBJ_files("cornell-box.obj",
-                                                          "cornell-box.mtl",
-                                                          0.35);
-    for (ModelTriangle x : triangles)
-    {
-        std::cout << x.colour  // string (key)
-                  << std::endl;
-    }
-	/*DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
+	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<CanvasTriangle> triangles;
-    std::vector<Colour> colours;
-    //add_triangle(triangles, colours);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
+    glm::vec3 camera_position = glm::vec3(0.0, 0.0, 4.0);
+    float focal_length = 2.0;
 
-    CanvasPoint v0 = CanvasPoint(160, 10);
-    CanvasPoint v1 = CanvasPoint(300, 230);
-    CanvasPoint v2 = CanvasPoint(10, 150);
-    v0.texturePoint = TexturePoint(195, 5);
-    v1.texturePoint = TexturePoint(395, 380);
-    v2.texturePoint = TexturePoint(65, 330);
-    CanvasTriangle texture_triangle = CanvasTriangle(v0, v1, v2);
-
-    //TextureMap textureMap = TextureMap("texture.ppm");
+    wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
 
 	while (true) {
 
-		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window, triangles, colours);
-		//draw(window);
-		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 
-        for(int i = 0; i < int(triangles.size()); ++i) {
-            draw_filled_triangles(window, triangles[i], colours[i]);
-        }
-        //textureMapper(window,  texture_triangle, textureMap);
+		if (window.pollForInputEvents(event)) handleEvent(event, window);
         window.renderFrame();
-        //break;
-	}*/
+
+	}
 }
