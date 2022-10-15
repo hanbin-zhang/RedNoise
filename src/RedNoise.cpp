@@ -173,9 +173,11 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoi
 
         float x_to = to_start.x + i * x_step_size_to;
         float y_to = to_start.y + i * y_step_size_to;
-
         draw_line(window, CanvasPoint(x_from, y_from), CanvasPoint(x_to, y_to), colour);
+        std::cout << CanvasPoint(x_from, y_from) << ", " << CanvasPoint(x_to, y_to) << std::endl;
+
     }
+    std::cout << numberOfSteps << std::endl;
 }
 
 std::vector<CanvasPoint> interpolatingCanvasPoint(CanvasPoint from, CanvasPoint to, float stepSize) {
@@ -262,10 +264,11 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     }
 
     CanvasPoint mid_point = find_mid_point(vertices);
-
     // draw top triangle
+    std::cout << mid_point << std::endl;
     fill_half_triangle(window, vertices[0], vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
+    std::cout << mid_point << std::endl;
     fill_half_triangle(window,  vertices[2], vertices[2], mid_point, vertices[1],colour);
 
 }
@@ -280,7 +283,7 @@ void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const
     draw_line(window, triangle.v0(), triangle.v1(), colour);
     draw_line(window, triangle.v1(), triangle.v2(), colour);
     draw_line(window, triangle.v2(), triangle.v0(), colour);
-    fill_triangle(window, triangle, colour);
+    //fill_triangle(window, triangle, colour);
 }
 
 void draw(DrawingWindow &window) {
@@ -328,7 +331,8 @@ void wire_frame_render(DrawingWindow &window,
         CanvasTriangle image_plane_triangle = CanvasTriangle(image_plane_triangle_vertices[0],
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
-        draw_stroked_triangles(window, image_plane_triangle, Colour(255, 255, 255));
+
+        draw_filled_triangles(window, image_plane_triangle, triangle.colour);
     }
 }
 
@@ -422,12 +426,14 @@ int main(int argc, char *argv[]) {
     float focal_length = 2.0;
 
     wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
-
+    /*Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
+    CanvasTriangle triangle = CanvasTriangle(
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
+            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)));
+    draw_filled_triangles(window, triangle, colour);*/
 	while (true) {
-
-
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
         window.renderFrame();
-
 	}
 }
