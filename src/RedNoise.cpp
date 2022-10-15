@@ -160,18 +160,17 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     float x_step_size = x_diff / numberOfSteps;
     float y_step_size = y_diff / numberOfSteps;
 
-    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, int(numberOfSteps));
+    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, int(round(numberOfSteps+1)));
 
     for (float i = 0; i < numberOfSteps; ++i) {
         float x = from.x + i*x_step_size;
         float y = from.y + i*y_step_size;
-        std::cout << 1/depths[i] << std::endl;
-//        if (1/depths[int (i)]>depth_buffer[int(round(x))][int(round(y))]) {
-//
-//            window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
-//            depth_buffer[int(round(x))][int(round(y))] = 1/depths[int (i)];
-//        }
-        window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
+        if (1/depths[int (i)]>depth_buffer[int(round(x))][int(round(y))]) {
+            window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
+            depth_buffer[int(round(x))][int(round(y))] = 1/depths[int (i)];
+        }
+        std::cout << 1/depths[int (i)] << ". " << depth_buffer[int(round(x))][int(round(y))] << std::endl;
+        //window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
     }
 
 }
