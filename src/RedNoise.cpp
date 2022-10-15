@@ -18,6 +18,8 @@
 #define WIDTH 320
 #define HEIGHT 240
 
+float depth_buffer[WIDTH][HEIGHT];
+
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
     std::vector<float> result;
@@ -150,7 +152,7 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
     }
 }
 
-void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour, float (&depth_buffer)[WIDTH][HEIGHT]) {
+void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour) {
     float x_diff = to.x - from.x;
     float y_diff = to.y - from.y;
 
@@ -158,48 +160,48 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     float x_step_size = x_diff / numberOfSteps;
     float y_step_size = y_diff / numberOfSteps;
 
-    for (float i = 0.0; i < numberOfSteps; ++i) {
+    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, int(numberOfSteps));
+
+    for (float i = 0; i < numberOfSteps; ++i) {
         float x = from.x + i*x_step_size;
         float y = from.y + i*y_step_size;
-
+        std::cout << 1/depths[i] << std::endl;
+//        if (1/depths[int (i)]>depth_buffer[int(round(x))][int(round(y))]) {
+//
+//            window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
+//            depth_buffer[int(round(x))][int(round(y))] = 1/depths[int (i)];
+//        }
         window.setPixelColour(size_t(round(x)), size_t(round(y)), colour_uint32(colour));
+    }
 
 }
 
-}
-
-void fill_half_triangle(DrawingWindow &window, CanvasPoint from_start, CanvasPoint to_start,
-                        CanvasPoint from_end, CanvasPoint to_end, const Colour& colour, float (&depth_buffer)[WIDTH][HEIGHT]) {
-    float x_diff_to = from_end.x - to_start.x;
-    float y_diff_to = from_end.y - to_start.y;
-
-    float x_diff_from = to_end.x - from_start.x;
-    float y_diff_from = to_end.y - from_start.y;
+void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
+                        CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
+    float x_diff_to = from_end.x - start.x;
+    float x_diff_from = to_end.x - start.x;
+    float y_diff = to_end.y - start.y;
 
     float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
-    float numberOfSteps_y = std::max(abs(y_diff_from), abs(y_diff_to));
-    float numberOfSteps = std::max(numberOfSteps_x, numberOfSteps_y);
-
+    float numberOfSteps = std::max(numberOfSteps_x, abs(y_diff));
 
     float x_step_size_from = x_diff_from / numberOfSteps;
-    float y_step_size_from = y_diff_from / numberOfSteps;
     float x_step_size_to = x_diff_to / numberOfSteps;
-    float y_step_size_to = y_diff_to / numberOfSteps;
+    float y_step_size = y_diff / numberOfSteps;
 
-    std::vector<float> depth1 = interpolateSingleFloats(to_end.depth, from_start.depth, int(numberOfSteps));
-    std::vector<float> depth2 = interpolateSingleFloats(from_end.depth, to_start.depth, int(numberOfSteps));
+    std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, int(numberOfSteps));
+    std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth,int(numberOfSteps));
 
 
     for (float i = 0.0; i <= numberOfSteps; ++i) {
-        float x_from = from_start.x + i * x_step_size_from;
-        float y_from = from_start.y + i * y_step_size_from;
+        float x_from = start.x + i * x_step_size_from;
+        float y_from = start.y + i * y_step_size;
 
-        float x_to = to_start.x + i * x_step_size_to;
-        float y_to = to_start.y + i * y_step_size_to;
-        draw_line_with_depth(window, CanvasPoint(x_from, y_from),
-                             CanvasPoint(x_to, y_to),
-                             colour,
-                             depth_buffer);
+        float x_to = start.x + i * x_step_size_to;
+        float y_to = start.y + i * y_step_size;
+        draw_line_with_depth(window, CanvasPoint(x_from, y_from, depth_from[int(i)]),
+                             CanvasPoint(x_to, y_to, depth_to[int(i)]),
+                             colour);
     }
 }
 
@@ -279,7 +281,7 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
     return mid_point;
 }
 
-void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour, float (&depth_buffer)[WIDTH][HEIGHT]) {
+void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
     std::array<CanvasPoint, 3> vertices = triangle.vertices;
     while (true) {
         if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
@@ -290,9 +292,9 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
 
     CanvasPoint mid_point = find_mid_point(vertices);
     // draw top triangle
-    fill_half_triangle(window, vertices[0], vertices[0], mid_point, vertices[1], colour, depth_buffer);
+    fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
-    fill_half_triangle(window,  vertices[2], vertices[2], mid_point, vertices[1],colour, depth_buffer);
+    fill_half_triangle(window, vertices[2], mid_point, vertices[1],colour);
     draw_line(window, vertices[1], mid_point, colour);
     draw_line(window, triangle.v0(), triangle.v1(), colour);
 }
@@ -303,10 +305,10 @@ void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, cons
     draw_line(window, triangle.v2(), triangle.v0(), colour);
 }
 
-void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour,
-                           float (&depth_buffer)[WIDTH][HEIGHT]) {
+void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour
+                           ) {
     draw_stroked_triangles(window, triangle, colour);
-    fill_triangle(window, triangle, colour, depth_buffer);
+    fill_triangle(window, triangle, colour);
 }
 
 void draw(DrawingWindow &window) {
@@ -346,7 +348,6 @@ void wire_frame_render(DrawingWindow &window,
                         float focalLength,
                         float image_plane_scale) {
 
-    float depth_buffer[WIDTH][HEIGHT];
     for (auto & x : depth_buffer) {
         for (float & y : x) {
             y = 0.0;
@@ -365,8 +366,7 @@ void wire_frame_render(DrawingWindow &window,
                                                              image_plane_triangle_vertices[2]);
 
         draw_filled_triangles(window, image_plane_triangle,
-                              triangle.colour,
-                              depth_buffer);
+                              triangle.colour);
     }
 
 }
@@ -384,14 +384,9 @@ void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& c
 glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
     glm::mat3x3 reverse_matrix;
     float determinant = 0;
-    /*for(int i = 0; i < 3; i++) {
-        determinant = determinant + (mat[0][i] * (mat[1][(i + 1) % 3] * mat[2][(i + 2) % 3] -
-                                                  mat[1][(i + 2) % 3] * mat[2][(i + 1) % 3]));
-    }*/
     determinant += (mat[0][0] * (mat[1][(0 + 1) % 3] * mat[2][(0 + 2) % 3] - mat[1][(0 + 2) % 3] * mat[2][(0 + 1) % 3]));
     determinant += (mat[0][1] * (mat[1][(1 + 1) % 3] * mat[2][(1 + 2) % 3] - mat[1][(1 + 2) % 3] * mat[2][(1 + 1) % 3]));
     determinant += (mat[0][2] * (mat[1][(2 + 1) % 3] * mat[2][(2 + 2) % 3] - mat[1][(2 + 2) % 3] * mat[2][(2 + 1) % 3]));
-
 
     for(int i = 0; i < 3; i++){
         for(int j = 0; j < 3; j++){
