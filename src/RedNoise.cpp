@@ -13,10 +13,9 @@
 #include "glm/mat3x3.hpp"
 #include <iostream>
 #include "ModelTriangle.h"
-#include <map> //
 
-#define WIDTH 320
-#define HEIGHT 240
+#define WIDTH 640
+#define HEIGHT 480
 
 float depth_buffer[WIDTH][HEIGHT];
 
