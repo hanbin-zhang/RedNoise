@@ -164,7 +164,6 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         return;
     }
 
-
     if (round(from.x) == round(to.x)) {
         //std::cout << "cloase" << std::endl;
         int round_x = int(round(from.x));
@@ -180,14 +179,10 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     float numberOfSteps = abs(x_diff);
     float x_step_size = x_diff / numberOfSteps;
 
-    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, ceil(numberOfSteps));
+    float depth_step_size = (to.depth-from.depth)/numberOfSteps;
 
-//    if (floor(numberOfSteps) != round(numberOfSteps)) {
-//        depths.push_back(to.depth + depths[1] - depths[0]);
-//    }
-    std::cout << ceil(numberOfSteps) << std::endl;
-    std::cout <<     depths.size() << std::endl;
-    for (float i = 0; i < ceil(numberOfSteps); ++i) {
+    for (float i = 0; i <= ceil(numberOfSteps); ++i) {
+        float depth = from.depth + i*depth_step_size;
         float x = from.x + i*x_step_size;
         //std::cout << "round x" << std::endl;
         float y = from.y;
@@ -197,9 +192,9 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
 //        std::cout << from.depth << std::endl;
 //        std::cout << i << std::endl;
 //        std::cout << depths[1] << std::endl;
-        if ((depths[int (i)])>depth_buffer[round_x][round_y]) {
+        if (depth>depth_buffer[round_x][round_y]) {
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-            depth_buffer[round_x][round_y] = depths[int (i)];
+            depth_buffer[round_x][round_y] = depth;
         } else {
             if (colour.red == 255 && colour.blue==0 && colour.green==0) {
 //                std::cout << (depths[int (round(i))]) << std::endl;
@@ -226,7 +221,6 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
 
     std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, ceil(numberOfSteps));
     std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth, ceil(numberOfSteps));
-
 
     for (float i = 0.0; i < numberOfSteps; ++i) {
         float x_from = start.x + i * x_step_size_from;
@@ -329,7 +323,7 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     if (vertices[1].y != vertices[2].y) {
         fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
     }
-    //draw_line_with_depth(window, vertices[1], mid_point, colour);
+    draw_line_with_depth(window, vertices[1], mid_point, colour);
     //draw_line_with_depth(window, triangle.v0(), triangle.v1(), colour);
 }
 
