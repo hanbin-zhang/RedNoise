@@ -175,7 +175,7 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         }
     }
     float x_diff = to.x - from.x;
-//    std::cout << x_diff << std::endl;
+
     float numberOfSteps = abs(x_diff);
     float x_step_size = x_diff / numberOfSteps;
 
@@ -189,16 +189,15 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         //std::cout << "round y" << std::endl;
         int round_x = int(round(x));
         int round_y = int(round(y));
-//        std::cout << from.depth << std::endl;
-//        std::cout << i << std::endl;
-//        std::cout << depths[1] << std::endl;
+
         if (depth>depth_buffer[round_x][round_y]) {
-            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
             depth_buffer[round_x][round_y] = depth;
+            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
+
         } else {
             if (colour.red == 255 && colour.blue==0 && colour.green==0) {
-//                std::cout << (depths[int (round(i))]) << std::endl;
-//                std::cout << depth_buffer[round_x][round_y] << std::endl;
+                std::cout << (depth) << std::endl;
+                std::cout << depth_buffer[round_x][round_y] << std::endl;
             }
         }
         //window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
@@ -218,18 +217,23 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
     float x_step_size_from = x_diff_from / numberOfSteps;
     float x_step_size_to = x_diff_to / numberOfSteps;
     float y_step_size = y_diff / numberOfSteps;
+    float from_depth_step_size = (from_end.depth - start.depth)/numberOfSteps;
+    float to_depth_step_size = (to_end.depth - start.depth)/numberOfSteps;
 
-    std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, ceil(numberOfSteps));
-    std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth, ceil(numberOfSteps));
+//    std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, ceil(numberOfSteps));
+//    std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth, ceil(numberOfSteps));
 
-    for (float i = 0.0; i < numberOfSteps; ++i) {
+    for (float i = 0.0; i <= numberOfSteps; ++i) {
         float x_from = start.x + i * x_step_size_from;
         float y_from = start.y + i * y_step_size;
 
         float x_to = start.x + i * x_step_size_to;
         float y_to = start.y + i * y_step_size;
-        draw_line_with_depth(window, CanvasPoint(x_from, y_from, depth_from[int(i)]),
-                             CanvasPoint(x_to, y_to, depth_to[int(i)]),
+
+        float from_depth = from_depth_step_size*i + start.depth;
+        float to_depth = to_depth_step_size*i + start.depth;
+        draw_line_with_depth(window, CanvasPoint(x_from, y_from, from_depth),
+                             CanvasPoint(x_to, y_to, to_depth),
                              colour);
     }
 }
@@ -301,7 +305,7 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
     auto top_bottom_y_diff = float (abs(int(vertices[0].y - vertices[2].y)));
 
     float mid_x_diff = top_bottom_x_diff/top_bottom_y_diff * float(abs(vertices[0].y - vertices[1].y));
-    mid_point.depth = interpolateSingleFloats(vertices[0].depth, vertices[2].depth, 3)[1];
+    mid_point.depth = (vertices[2].depth + vertices[0].depth)/2;
     if (vertices[0].x >= vertices[2].x) mid_point.x = vertices[0].x - mid_x_diff;
     else mid_point.x = vertices[0].x + mid_x_diff;
     return mid_point;
@@ -323,7 +327,7 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     if (vertices[1].y != vertices[2].y) {
         fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
     }
-    draw_line_with_depth(window, vertices[1], mid_point, colour);
+    //draw_line_with_depth(window, vertices[1], mid_point, colour);
     //draw_line_with_depth(window, triangle.v0(), triangle.v1(), colour);
 }
 
