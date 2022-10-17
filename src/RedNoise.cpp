@@ -159,20 +159,19 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     float x_step_size = x_diff / numberOfSteps;
     float y_step_size = y_diff / numberOfSteps;
 
-    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, int(floor(numberOfSteps)+1));
-    //std::cout << "inter compkete"
-    //depths.push_back(depths[-1] + depths[1] - depths[0]);
-    for (float i = 0; i < ceil(numberOfSteps); ++i) {
+    std::vector<float> depths = interpolateSingleFloats(from.depth, to.depth, ceil(numberOfSteps));
+
+    //if (floor(numberOfSteps) != round(numberOfSteps))
+
+    for (float i = 0; i < numberOfSteps; ++i) {
         float x = from.x + i*x_step_size;
         float y = from.y + i*y_step_size;
         int round_x = int(round(x));
         int round_y = int(round(y));
-         if ((depths[int (i)])>depth_buffer[round_x][round_y]) {
+        if ((depths[int (i)])>depth_buffer[round_x][round_y]) {
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
             depth_buffer[round_x][round_y] = depths[int (i)];
         }
-        //window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-
     }
 
 }
@@ -307,7 +306,6 @@ void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, cons
 
 void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour
                            ) {
-    //draw_stroked_triangles(window, triangle, colour);
     fill_triangle(window, triangle, colour);
 }
 
