@@ -14,8 +14,8 @@
 #include <iostream>
 #include "ModelTriangle.h"
 
-#define WIDTH 960
-#define HEIGHT 720
+#define WIDTH 640
+#define HEIGHT 480
 
 float depth_buffer[WIDTH][HEIGHT];
 
@@ -196,8 +196,8 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
 
         } else {
             if (colour.red == 255 && colour.blue==0 && colour.green==0) {
-                std::cout << (depth) << std::endl;
-                std::cout << depth_buffer[round_x][round_y] << std::endl;
+//                std::cout << (depth) << std::endl;
+//                std::cout << depth_buffer[round_x][round_y] << std::endl;
             }
         }
         //window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
@@ -223,7 +223,7 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
 //    std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, ceil(numberOfSteps));
 //    std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth, ceil(numberOfSteps));
 
-    for (float i = 0.0; i <= numberOfSteps; ++i) {
+    for (float i = 0.0; i < numberOfSteps; ++i) {
         float x_from = start.x + i * x_step_size_from;
         float y_from = start.y + i * y_step_size;
 
