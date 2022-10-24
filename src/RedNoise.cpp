@@ -177,15 +177,6 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         return;
     }
 
-/*    if (round(from.x) == round(to.x)) {
-        int round_x = int(round(from.x));
-        int round_y = int(round(from.y));
-        float depth = std::max(from.depth, to.depth);
-        if (depth > depth_buffer[round_x][round_y]) {
-            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-            depth_buffer[round_x][round_y] = depth;
-        }
-    }*/
     float x_diff = to.x - from.x;
     float depth_diff = to.depth-from.depth;
 
@@ -197,6 +188,8 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     for (float i = 0; i <= (numberOfSteps); ++i) {
 
         float depth = from.depth + i*depth_step_size;
+
+
         float x = from.x + i*x_step_size;
         float y = from.y;
 
@@ -321,14 +314,11 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
 
 void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
     std::array<CanvasPoint, 3> vertices = triangle.vertices;
-    while (true) {
-        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
-        else if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
-        else if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
-        else if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
-
-    }
+    if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
+    if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
+    if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
     CanvasPoint mid_point = find_mid_point(vertices);
+
     // draw top triangle
     fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
@@ -376,7 +366,7 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
     float z_diff = abs(cameraPosition.z - vertexPosition.z);
     float u = scaling*focalLength * (vertexPosition.x-cameraPosition.x) / z_diff;
     float v = -1*scaling*focalLength * (vertexPosition.y-cameraPosition.y) / z_diff;
-    float relative_depth = sqrt(x_diff*x_diff + y_diff*y_diff + z_diff*z_diff);
+    float relative_depth = scaling*sqrt(x_diff*x_diff + y_diff*y_diff + z_diff*z_diff)*2;
     return {u+float(WIDTH)/2, v+float(HEIGHT)/2, relative_depth};
 }
 
@@ -391,7 +381,6 @@ void wire_frame_render(DrawingWindow &window,
             y = 0;
         }
     }
-
     for (const auto& triangle : model_triangles) {
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
@@ -402,6 +391,15 @@ void wire_frame_render(DrawingWindow &window,
         CanvasTriangle image_plane_triangle = CanvasTriangle(image_plane_triangle_vertices[0],
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
+
+//        if (triangle.colour.blue == 255 && triangle.colour.green == 0 && triangle.colour.red == 0) {
+//            std::cout << image_plane_triangle << std::endl;
+//            std::cout << triangle.colour << std::endl;
+//        }
+//        if (triangle.colour.blue == 255 && triangle.colour.green == 0 && triangle.colour.red == 255) {
+//            std::cout << image_plane_triangle << std::endl;
+//            std::cout << triangle.colour << std::endl;
+//        }
 
         draw_filled_triangles(window, image_plane_triangle,
                               triangle.colour);
@@ -439,12 +437,6 @@ glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
 
 void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
     std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
-//    while (true) {
-//        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
-//        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
-//        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
-//        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
-//    }
 
      if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
      if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
