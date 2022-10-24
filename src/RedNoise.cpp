@@ -483,7 +483,6 @@ int main(int argc, char *argv[]) {
 	while (true) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_position);
         window.clearPixels();
-        std::cout << camera_position.x << camera_position.y<< camera_position.z<< std::endl;
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
