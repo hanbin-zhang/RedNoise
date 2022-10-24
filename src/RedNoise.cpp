@@ -300,14 +300,42 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
     return mid_point;
 }
 
-void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
-    std::array<CanvasPoint, 3> vertices = triangle.vertices;
-    while (true) {
-        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
-        else if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
-        else if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
-        else if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
+bool cmp(std::pair<CanvasPoint, float>& a,
+         std::pair<CanvasPoint, float>& b)
+{
+    return a.second < b.second;
+}
+
+std::array<CanvasPoint, 3> sort(std::map<CanvasPoint, float>& M)
+{
+
+    // Declare vector of pairs
+    std::vector<std::pair<CanvasPoint, float> > A;
+
+    // Copy key-value pair from Map
+    // to vector of pairs
+    for (auto& it : M) {
+        A.emplace_back(it);
     }
+
+    // Sort using comparator function
+    sort(A.begin(), A.end(), cmp);
+
+    std::array<CanvasPoint, 3> sorted_vertices;
+    int index = 0;
+    // Print the sorted value
+    for (auto& it : A) {
+
+        sorted_vertices[index] = it.first;
+        index++;
+    }
+    return sorted_vertices;
+}
+
+void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
+    std::map<CanvasPoint, float> vertices_with_y;
+    std::array<CanvasPoint, 3> vertices = triangle.vertices;
+    vertices_with_y.insert(ve)
 
     CanvasPoint mid_point = find_mid_point(vertices);
     // draw top triangle
@@ -387,16 +415,6 @@ void wire_frame_render(DrawingWindow &window,
 
 }
 
-void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
-    Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
-    CanvasTriangle triangle = CanvasTriangle(
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)));
-    triangles.push_back(triangle);
-    colours.push_back(colour);
-}
-
 glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
     glm::mat3x3 reverse_matrix;
     float determinant = 0;
@@ -460,8 +478,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
-		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += -0.1;
-		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += 0.1;
+		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += 0.1;
+		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += -0.1;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -478,7 +496,7 @@ int main(int argc, char *argv[]) {
 	while (true) {
         window.clearPixels();
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_position);
-        
+        window.clearPixels();
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
