@@ -154,8 +154,8 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
 }
 
 void draw_pixel(DrawingWindow &window, float x, float y, float depth, const Colour& colour) {
-    int round_x = int(floor(x));
-    int round_y = int(floor(y));
+    int round_x = int(round(x));
+    int round_y = int(round(y));
 
     if (!(round_x >= WIDTH || round_y >= HEIGHT || round_x <= 0 || round_y <= 0)) {
         if (1/depth>depth_buffer[round_x][round_y]) {
@@ -177,6 +177,15 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         return;
     }
 
+/*    if (round(from.x) == round(to.x)) {
+        int round_x = int(round(from.x));
+        int round_y = int(round(from.y));
+        float depth = std::max(from.depth, to.depth);
+        if (depth > depth_buffer[round_x][round_y]) {
+            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
+            depth_buffer[round_x][round_y] = depth;
+        }
+    }*/
     float x_diff = to.x - from.x;
     float depth_diff = to.depth-from.depth;
 
@@ -272,7 +281,7 @@ void fill_half_texture_triangle(DrawingWindow &window,
     float x_step_size_to_texture = x_diff_to_texture / numberOfSteps;
     float y_step_size_to_texture = y_diff_to_texture / numberOfSteps;
 
-    for (float i = 0.0; i < numberOfSteps; ++i) {
+    for (float i = 0.0; i <= numberOfSteps; ++i) {
 
         float x_from_texture = from_start.texturePoint.x + i * x_step_size_from_texture;
         float y_from_texture = from_start.texturePoint.y + i * y_step_size_from_texture;
@@ -400,16 +409,6 @@ void wire_frame_render(DrawingWindow &window,
 
 }
 
-void add_triangle(std::vector<CanvasTriangle>& triangles, std::vector<Colour>& colours) {
-    Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
-    CanvasTriangle triangle = CanvasTriangle(
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)));
-    triangles.push_back(triangle);
-    colours.push_back(colour);
-}
-
 glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
     glm::mat3x3 reverse_matrix;
     float determinant = 0;
@@ -440,12 +439,16 @@ glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
 
 void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
     std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
-    while (true) {
-        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
-        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
-        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
-        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
-    }
+//    while (true) {
+//        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
+//        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
+//        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
+//        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
+//    }
+
+     if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
+     if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
+     if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
 
 
     CanvasPoint midpoint = find_mid_point(vertices);
