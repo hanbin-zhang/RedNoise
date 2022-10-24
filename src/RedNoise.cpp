@@ -14,8 +14,8 @@
 #include <iostream>
 #include "ModelTriangle.h"
 
-#define WIDTH 640
-#define HEIGHT 480
+#define WIDTH 960
+#define HEIGHT 720
 
 float depth_buffer[WIDTH][HEIGHT];
 
@@ -152,20 +152,30 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
     }
 }
 
-void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour) {
-    if (from.x == to.x && from.y == to.y) {
-        if (from.depth != to.depth) std::cout << "depth not the same" << std::endl;
-        int round_x = int(round(from.x));
-        int round_y = int(round(from.y));
-        if (from.depth > depth_buffer[round_x][round_y]) {
+void draw_pixel(DrawingWindow &window, float x, float y, float depth, const Colour& colour) {
+    int round_x = int(round(x));
+    int round_y = int(round(y));
+
+    if (!(round_x >= WIDTH || round_y >= HEIGHT || round_x <= 0 || round_y <= 0)) {
+
+        if (depth>depth_buffer[round_x][round_y]) {
+
+            depth_buffer[round_x][round_y] = depth;
+
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-            depth_buffer[round_x][round_y] = from.depth;
+
         }
+    }
+}
+
+void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour) {
+
+    if (from.x == to.x && from.y == to.y) {
+        draw_pixel(window, from.x, from.y, from.depth, colour);
         return;
     }
 
-    if (round(from.x) == round(to.x)) {
-        //std::cout << "cloase" << std::endl;
+/*    if (round(from.x) == round(to.x)) {
         int round_x = int(round(from.x));
         int round_y = int(round(from.y));
         float depth = std::max(from.depth, to.depth);
@@ -173,7 +183,7 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
             depth_buffer[round_x][round_y] = depth;
         }
-    }
+    }*/
     float x_diff = to.x - from.x;
 
     float numberOfSteps = abs(x_diff);
@@ -182,27 +192,14 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
     float depth_step_size = (to.depth-from.depth)/numberOfSteps;
 
     for (float i = 0; i <= ceil(numberOfSteps); ++i) {
+
         float depth = from.depth + i*depth_step_size;
         float x = from.x + i*x_step_size;
-        //std::cout << "round x" << std::endl;
         float y = from.y;
-        //std::cout << "round y" << std::endl;
-        int round_x = int(round(x));
-        int round_y = int(round(y));
 
-        if (depth>depth_buffer[round_x][round_y]) {
-            depth_buffer[round_x][round_y] = depth;
-            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
+        draw_pixel(window, x, y, depth, colour);
 
-        } else {
-            if (colour.red == 255 && colour.blue==0 && colour.green==0) {
-//                std::cout << (depth) << std::endl;
-//                std::cout << depth_buffer[round_x][round_y] << std::endl;
-            }
-        }
-        //window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
     }
-
 }
 
 void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
@@ -220,9 +217,6 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
     float from_depth_step_size = (from_end.depth - start.depth)/numberOfSteps;
     float to_depth_step_size = (to_end.depth - start.depth)/numberOfSteps;
 
-//    std::vector<float> depth_to = interpolateSingleFloats(start.depth, to_end.depth, ceil(numberOfSteps));
-//    std::vector<float> depth_from = interpolateSingleFloats( start.depth, from_end.depth, ceil(numberOfSteps));
-
     for (float i = 0.0; i < numberOfSteps; ++i) {
         float x_from = start.x + i * x_step_size_from;
         float y_from = start.y + i * y_step_size;
@@ -235,6 +229,7 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
         draw_line_with_depth(window, CanvasPoint(x_from, y_from, from_depth),
                              CanvasPoint(x_to, y_to, to_depth),
                              colour);
+
     }
 }
 
@@ -327,14 +322,12 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     if (vertices[1].y != vertices[2].y) {
         fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
     }
-    //draw_line_with_depth(window, vertices[1], mid_point, colour);
-    //draw_line_with_depth(window, triangle.v0(), triangle.v1(), colour);
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
-    draw_line_with_depth(window, triangle.v0(), triangle.v1(), colour);
-    draw_line_with_depth(window, triangle.v1(), triangle.v2(), colour);
-    draw_line_with_depth(window, triangle.v2(), triangle.v0(), colour);
+    draw_line(window, triangle.v0(), triangle.v1(), colour);
+    draw_line(window, triangle.v1(), triangle.v2(), colour);
+    draw_line(window, triangle.v2(), triangle.v0(), colour);
 }
 
 void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour
@@ -467,12 +460,12 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
     draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window) {
+void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position) {
 	if (event.type == SDL_KEYDOWN) {
-		if (event.key.keysym.sym == SDLK_LEFT) std::cout << "LEFT" << std::endl;
-		else if (event.key.keysym.sym == SDLK_RIGHT) std::cout << "RIGHT" << std::endl;
-		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
-		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
+		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
+		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
+		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += 0.1;
+		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += -0.1;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -486,15 +479,10 @@ int main(int argc, char *argv[]) {
     glm::vec3 camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
 
-    wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
-   /* Colour colour = Colour(rand()%255+1, rand()%255+1, rand()%255+1);
-    CanvasTriangle triangle = CanvasTriangle(
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)),
-            CanvasPoint(float(rand()%WIDTH+1), float(rand()%HEIGHT+1)));
-    draw_filled_triangles(window, triangle, colour);*/
 	while (true) {
-		if (window.pollForInputEvents(event)) handleEvent(event, window);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_position);
+        
+        wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
 }
