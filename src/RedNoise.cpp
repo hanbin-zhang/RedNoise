@@ -157,7 +157,7 @@ void draw_pixel(DrawingWindow &window, float x, float y, float depth, const Colo
     int round_y = int(round(y));
 
     if (!(round_x >= WIDTH || round_y >= HEIGHT || round_x <= 0 || round_y <= 0)) {
-
+        //std::cout << round_x << "," << round_y << std::endl;
         if (depth>depth_buffer[round_x][round_y]) {
 
             depth_buffer[round_x][round_y] = depth;
@@ -296,13 +296,14 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
     CanvasPoint mid_point;
     mid_point.y = vertices[1].y;
 
-    auto top_bottom_x_diff = float(abs(int(vertices[0].x - vertices[2].x)));
-    auto top_bottom_y_diff = float (abs(int(vertices[0].y - vertices[2].y)));
+    auto top_bottom_x_diff = float(abs(vertices[0].x - vertices[2].x));
+    auto top_bottom_y_diff = float (abs(vertices[0].y - vertices[2].y));
 
     float mid_x_diff = top_bottom_x_diff/top_bottom_y_diff * float(abs(vertices[0].y - vertices[1].y));
     mid_point.depth = (vertices[2].depth + vertices[0].depth)/2;
     if (vertices[0].x >= vertices[2].x) mid_point.x = vertices[0].x - mid_x_diff;
     else mid_point.x = vertices[0].x + mid_x_diff;
+
     return mid_point;
 }
 
@@ -313,8 +314,8 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
         else if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
         else if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
         else if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
-    }
 
+    }
     CanvasPoint mid_point = find_mid_point(vertices);
     // draw top triangle
     fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
@@ -476,12 +477,13 @@ int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 camera_position = glm::vec3(0.0, 0.0, 4.0);
+    glm::vec3 camera_position = glm::vec3(0.0, 0.2, 4.0);
     float focal_length = 2.0;
 
 	while (true) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_position);
-        
+        window.clearPixels();
+        std::cout << camera_position.x << camera_position.y<< camera_position.z<< std::endl;
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
