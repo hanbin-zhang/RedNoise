@@ -157,10 +157,11 @@ void draw_pixel(DrawingWindow &window, float x, float y, float depth, const Colo
     int round_y = int(round(y));
 
     if (!(round_x >= WIDTH || round_y >= HEIGHT || round_x <= 0 || round_y <= 0)) {
+        //window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
 
-        if (depth>depth_buffer[round_x][round_y]) {
+        if (1.0/depth>depth_buffer[round_x][round_y]) {
 
-            depth_buffer[round_x][round_y] = depth;
+            depth_buffer[round_x][round_y] = 1.0/depth;
 
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
 
@@ -175,23 +176,16 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         return;
     }
 
-/*    if (round(from.x) == round(to.x)) {
-        int round_x = int(round(from.x));
-        int round_y = int(round(from.y));
-        float depth = std::max(from.depth, to.depth);
-        if (depth > depth_buffer[round_x][round_y]) {
-            window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-            depth_buffer[round_x][round_y] = depth;
-        }
-    }*/
     float x_diff = to.x - from.x;
+    float y_diff = to.y - from.y;
 
-    float numberOfSteps = abs(x_diff);
+    float numberOfSteps = fmax(abs(x_diff), abs(y_diff));
     float x_step_size = x_diff / numberOfSteps;
+
 
     float depth_step_size = (to.depth-from.depth)/numberOfSteps;
 
-    for (float i = 0; i <= ceil(numberOfSteps); ++i) {
+    for (float i = 0; i <= numberOfSteps; ++i) {
 
         float depth = from.depth + i*depth_step_size;
         float x = from.x + i*x_step_size;
@@ -300,7 +294,7 @@ CanvasPoint find_mid_point(std::array<CanvasPoint, 3> vertices) {
     auto top_bottom_y_diff = float (abs(int(vertices[0].y - vertices[2].y)));
 
     float mid_x_diff = top_bottom_x_diff/top_bottom_y_diff * float(abs(vertices[0].y - vertices[1].y));
-    mid_point.depth = (vertices[2].depth + vertices[0].depth)/2;
+    mid_point.depth = (vertices[2].depth + vertices[0].depth)/float (2);
     if (vertices[0].x >= vertices[2].x) mid_point.x = vertices[0].x - mid_x_diff;
     else mid_point.x = vertices[0].x + mid_x_diff;
     return mid_point;
@@ -319,9 +313,7 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     // draw top triangle
     fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
-    if (vertices[1].y != vertices[2].y) {
-        fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
-    }
+    fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
@@ -435,12 +427,16 @@ glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
 
 void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
     std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
-    while (true) {
-        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
-        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
-        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
-        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
-    }
+//    while (true) {
+//        if (vertices[0].y <= vertices[1].y && vertices[1].y <= vertices[2].y) break;
+//        else if (vertices[2].y <= vertices[0].y) std::swap(vertices[2], vertices[0]);
+//        else if (vertices[1].y <= vertices[0].y) std::swap(vertices[0], vertices[1]);
+//        else if (vertices[2].y <= vertices[1].y) std::swap(vertices[2], vertices[1]);
+//    }
+
+     if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
+     if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
+     if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
 
 
     CanvasPoint midpoint = find_mid_point(vertices);
@@ -480,6 +476,7 @@ int main(int argc, char *argv[]) {
     float focal_length = 2.0;
 
 	while (true) {
+        window.clearPixels();
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_position);
         
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
