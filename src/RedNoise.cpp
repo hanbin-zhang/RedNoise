@@ -466,10 +466,10 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
 		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += -0.1;
 		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += 0.1;
-        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (0.5);
-        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (0.5);
-        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (0.5);
-        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (0.5);
+        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (M_PI/18);
+        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/18);
+        else if (event.key.keysym.sym == SDLK_a) *y_rotate += float (M_PI/18);
+        else if (event.key.keysym.sym == SDLK_d) *y_rotate -= float (M_PI/18);
 
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
@@ -478,31 +478,44 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 	}
 }
 
+glm::mat4 get_homogeneous_mat(float x_rotate_radian, float y_rotate_radian, glm::vec3 translation) {
+    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
+                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
+                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
+
+    glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
+                             glm::vec3{0, 1, 0},
+                             glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
+
+
+    glm::mat3 rotate = x_rotate_mat * y_rotate_mat;
+
+    glm::mat4 homogeneous_mat = {glm::vec4 {rotate[0][0], rotate[0][1], rotate[0][2], 0},
+                                 glm::vec4 {rotate[1][0], rotate[1][1], rotate[1][2], 0},
+                                 glm::vec4 {rotate[2][0], rotate[2][1], rotate[2][2], 0},
+                                 glm::vec4 {translation[0], translation[1], translation[2], 1}};
+    return homogeneous_mat;
+}
+
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
+    glm::vec3 camera_translation = glm::vec3(0.0, 0.0, 0.0);
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
 
     while (true) {
-		if (window.pollForInputEvents(event)) handleEvent(event, window, &initial_camera_position, &x_rotate_radian, &y_rotate_radian);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, &camera_translation, &x_rotate_radian, &y_rotate_radian);
         window.clearPixels();
 
-        glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
-                                 glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
-                                 glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
-        glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
-                                 glm::vec3{0, 1, 0},
-                                 glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
+        glm::mat4 homogeneous_mat = get_homogeneous_mat(x_rotate_radian, y_rotate_radian, camera_translation);
+        glm::vec4 camera_vector = {initial_camera_position[0], initial_camera_position[1], initial_camera_position[2], 1};
+        camera_vector = homogeneous_mat * camera_vector;
 
-        glm::vec3 camera_position;
-
-        camera_position = x_rotate_mat * initial_camera_position;
-        camera_position = y_rotate_mat * camera_position;
-
+        glm::vec3 camera_position = glm::vec3{camera_vector[0], camera_vector[1], camera_vector[2]};
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
