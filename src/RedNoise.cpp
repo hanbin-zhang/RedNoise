@@ -11,12 +11,13 @@
 #include <TexturePoint.h>
 #include <TextureMap.h>
 #include "glm/mat3x3.hpp"
-#include <iostream>
+
 #include "ModelTriangle.h"
 
 #define WIDTH 960
 #define HEIGHT 720
 
+glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
 
@@ -361,13 +362,12 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        glm::vec3 vertexPosition,
                                        float focalLength,
                                        float scaling) {
-    float x_diff = abs(cameraPosition.x - vertexPosition.x);
-    float y_diff = abs(cameraPosition.y - vertexPosition.y);
-    float z_diff = abs(cameraPosition.z - vertexPosition.z);
-    float u = scaling*focalLength * (vertexPosition.x-cameraPosition.x) / z_diff;
-    float v = -1*scaling*focalLength * (vertexPosition.y-cameraPosition.y) / z_diff;
-    float relative_depth = scaling*sqrt(x_diff*x_diff + y_diff*y_diff + z_diff*z_diff)*2;
-    return {u+float(WIDTH)/2, v+float(HEIGHT)/2, relative_depth};
+    glm::vec3 diff =  vertexPosition - cameraPosition;
+    diff = diff * glm::inverse(camera_orientation);
+    float u = float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z;
+    float v = float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z;
+    float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z)*2;
+    return {u, v, relative_depth} ;
 }
 
 void wire_frame_render(DrawingWindow &window,
@@ -385,6 +385,7 @@ void wire_frame_render(DrawingWindow &window,
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
         for (auto vertex : triangle.vertices) {
+
             CanvasPoint sdl_vertex = getCanvasIntersectionPoint(cameraPosition, vertex, focalLength, image_plane_scale);
             image_plane_triangle_vertices.push_back(sdl_vertex);
         }
@@ -392,14 +393,7 @@ void wire_frame_render(DrawingWindow &window,
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
 
-//        if (triangle.colour.blue == 255 && triangle.colour.green == 0 && triangle.colour.red == 0) {
-//            std::cout << image_plane_triangle << std::endl;
-//            std::cout << triangle.colour << std::endl;
-//        }
-//        if (triangle.colour.blue == 255 && triangle.colour.green == 0 && triangle.colour.red == 255) {
-//            std::cout << image_plane_triangle << std::endl;
-//            std::cout << triangle.colour << std::endl;
-//        }
+
 
         draw_filled_triangles(window, image_plane_triangle,
                               triangle.colour);
@@ -491,6 +485,10 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &initial_camera_position, &x_rotate_radian, &y_rotate_radian);
         window.clearPixels();
 
+        camera_orientation = {glm::vec3 {1, 0, 0},
+                              glm::vec3 {0, 1, 0},
+                              glm::vec3 {0, 0, 1},};
+
         glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
                                  glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
                                  glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
@@ -500,10 +498,12 @@ int main(int argc, char *argv[]) {
 
         glm::vec3 camera_position;
 
+        camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
+
         camera_position = x_rotate_mat * initial_camera_position;
         camera_position = y_rotate_mat * camera_position;
 
-        wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
+        wire_frame_render(window, model_triangles, initial_camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
 	}
 }
