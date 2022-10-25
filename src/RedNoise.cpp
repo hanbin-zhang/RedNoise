@@ -513,7 +513,7 @@ int main(int argc, char *argv[]) {
 
         glm::mat4 homogeneous_mat = get_homogeneous_mat(x_rotate_radian, y_rotate_radian, camera_translation);
         glm::vec4 camera_vector = {initial_camera_position[0], initial_camera_position[1], initial_camera_position[2], 1};
-        camera_vector = homogeneous_mat * camera_vector;
+        camera_vector = (homogeneous_mat) * camera_vector;
 
         glm::vec3 camera_position = glm::vec3{camera_vector[0], camera_vector[1], camera_vector[2]};
         wire_frame_render(window, model_triangles, camera_position, focal_length, WIDTH / 2);
