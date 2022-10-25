@@ -466,10 +466,10 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
 		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += -0.1;
 		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += 0.1;
-        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (0.5);
-        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (0.5);
-        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (0.5);
-        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (0.5);
+        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (M_PI/180);
+        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/180);
+        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (M_PI/180);
+        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (M_PI/180);
 
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
