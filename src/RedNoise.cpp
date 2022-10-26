@@ -201,6 +201,11 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
 
 void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
                         CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
+    if ((from_end.x > WIDTH || from_end.x < 0) && (from_end.y > HEIGHT || from_end.y < 0) &&
+    (to_end.x > WIDTH || to_end.x < 0) && (to_end.y > HEIGHT || to_end.y < 0) &&
+    (start.x > WIDTH || start.x < 0) && (start.y > HEIGHT || start.y < 0))
+        return;
+
     float x_diff_to = from_end.x - start.x;
     float x_diff_from = to_end.x - start.x;
     float y_diff = to_end.y - start.y;
@@ -321,9 +326,12 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     CanvasPoint mid_point = find_mid_point(vertices);
 
     // draw top triangle
+    std::cout << "start_top_half" << std::endl;
     fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
+    std::cout << "start_bot_half" << std::endl;
     fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
+    std::cout << "end half" << std::endl;
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
@@ -370,17 +378,28 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
     return {u, v, relative_depth} ;
 }
 
-void wire_frame_render(DrawingWindow &window,
-                        const std::vector<ModelTriangle>& model_triangles,
-                        glm::vec3 cameraPosition,
-                        float focalLength,
-                        float image_plane_scale) {
-
+void initialize_depth_buffer() {
     for (auto & x : depth_buffer) {
         for (float & y : x) {
             y = 0;
         }
     }
+}
+
+void wire_frame_render(DrawingWindow &window,
+                        const std::vector<ModelTriangle>& model_triangles,
+                        glm::vec3 cameraPosition,
+                        float focalLength,
+                        float image_plane_scale,
+                        float orbiting_radian) {
+
+    initialize_depth_buffer();
+    std::cout <<"sfs"<< (orbiting_radian/M_PI) << std::endl;
+    glm::mat3 orbiting =  {glm::vec3{cos(orbiting_radian), 0, -sin(orbiting_radian)},
+                           glm::vec3{0, 1, 0},
+                           glm::vec3{sin(orbiting_radian), 0, cos(orbiting_radian)}};
+
+    cameraPosition = orbiting * cameraPosition;
     for (const auto& triangle : model_triangles) {
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
@@ -389,15 +408,17 @@ void wire_frame_render(DrawingWindow &window,
             CanvasPoint sdl_vertex = getCanvasIntersectionPoint(cameraPosition, vertex, focalLength, image_plane_scale);
             image_plane_triangle_vertices.push_back(sdl_vertex);
         }
+
         CanvasTriangle image_plane_triangle = CanvasTriangle(image_plane_triangle_vertices[0],
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
 
-
-
+        std::cout << image_plane_triangle << std::endl;
         draw_filled_triangles(window, image_plane_triangle,
                               triangle.colour);
+
     }
+
 
 }
 
@@ -498,14 +519,22 @@ int main(int argc, char *argv[]) {
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
+    float orbiting_radian = 0;
 
     while (true) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &initial_camera_position, &x_rotate_radian, &y_rotate_radian);
         window.clearPixels();
 
-        calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
+        //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
 
-        wire_frame_render(window, model_triangles, initial_camera_position, focal_length, WIDTH / 2);
+        if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
+        orbiting_radian += M_PI / 360;
+
+
+        wire_frame_render(window, model_triangles,
+                          initial_camera_position,
+                          focal_length, WIDTH / 2,
+                          orbiting_radian);
         window.renderFrame();
 	}
 }
