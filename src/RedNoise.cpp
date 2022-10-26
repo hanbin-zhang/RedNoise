@@ -17,7 +17,7 @@
 #define WIDTH 960
 #define HEIGHT 720
 
-glm::mat3 camera_orientation;
+//glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
 
@@ -326,12 +326,11 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
     CanvasPoint mid_point = find_mid_point(vertices);
 
     // draw top triangle
-    std::cout << "start_top_half" << std::endl;
+
     fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
     // draw bottom triangle
-    std::cout << "start_bot_half" << std::endl;
     fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
-    std::cout << "end half" << std::endl;
+
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
@@ -370,11 +369,18 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        glm::vec3 vertexPosition,
                                        float focalLength,
                                        float scaling) {
+
+    glm::vec3 forward = cameraPosition - vertexPosition;
+    glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), forward);
+    glm::vec3 up = glm::cross(forward, right);
+    glm::mat3 camera_orbit_orientation = {right, up, forward};
+
+    //vertexPosition = vertexPosition * camera_orbit_orientation;
     glm::vec3 diff =  vertexPosition - cameraPosition;
-    diff = diff * glm::inverse(camera_orientation);
+    diff = diff * glm::inverse(camera_orbit_orientation);
     float u = float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z;
     float v = float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z;
-    float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z)*2;
+    float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
     return {u, v, relative_depth} ;
 }
 
@@ -394,7 +400,6 @@ void wire_frame_render(DrawingWindow &window,
                         float orbiting_radian) {
 
     initialize_depth_buffer();
-    std::cout <<"sfs"<< (orbiting_radian/M_PI) << std::endl;
     glm::mat3 orbiting =  {glm::vec3{cos(orbiting_radian), 0, -sin(orbiting_radian)},
                            glm::vec3{0, 1, 0},
                            glm::vec3{sin(orbiting_radian), 0, cos(orbiting_radian)}};
@@ -413,7 +418,6 @@ void wire_frame_render(DrawingWindow &window,
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
 
-        std::cout << image_plane_triangle << std::endl;
         draw_filled_triangles(window, image_plane_triangle,
                               triangle.colour);
 
@@ -493,23 +497,23 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 	}
 }
 
-void calculate_camera_orientation(float x_rotate_radian, float y_rotate_radian) {
-    camera_orientation = {glm::vec3 {1, 0, 0},
-                          glm::vec3 {0, 1, 0},
-                          glm::vec3 {0, 0, 1},};
-
-    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
-                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
-                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
-
-    glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
-                             glm::vec3{0, 1, 0},
-                             glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
-
-    glm::vec3 camera_position;
-
-    camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
-}
+//void calculate_camera_orientation(float x_rotate_radian, float y_rotate_radian) {
+//    camera_orientation = {glm::vec3 {1, 0, 0},
+//                          glm::vec3 {0, 1, 0},
+//                          glm::vec3 {0, 0, 1},};
+//
+//    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
+//                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
+//                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
+//
+//    glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
+//                             glm::vec3{0, 1, 0},
+//                             glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
+//
+//    glm::vec3 camera_position;
+//
+//    camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
+//}
 
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
@@ -528,7 +532,7 @@ int main(int argc, char *argv[]) {
         //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
 
         if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
-        orbiting_radian += M_PI / 360;
+        orbiting_radian += M_PI / 36;
 
 
         wire_frame_render(window, model_triangles,
