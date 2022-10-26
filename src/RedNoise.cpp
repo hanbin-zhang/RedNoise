@@ -472,6 +472,24 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 	}
 }
 
+void calculate_camera_orientation(float x_rotate_radian, float y_rotate_radian) {
+    camera_orientation = {glm::vec3 {1, 0, 0},
+                          glm::vec3 {0, 1, 0},
+                          glm::vec3 {0, 0, 1},};
+
+    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
+                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
+                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
+
+    glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
+                             glm::vec3{0, 1, 0},
+                             glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
+
+    glm::vec3 camera_position;
+
+    camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
+}
+
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
@@ -485,23 +503,7 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, &initial_camera_position, &x_rotate_radian, &y_rotate_radian);
         window.clearPixels();
 
-        camera_orientation = {glm::vec3 {1, 0, 0},
-                              glm::vec3 {0, 1, 0},
-                              glm::vec3 {0, 0, 1},};
-
-        glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
-                                 glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
-                                 glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
-        glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
-                                 glm::vec3{0, 1, 0},
-                                 glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
-
-        glm::vec3 camera_position;
-
-        camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
-
-        camera_position = x_rotate_mat * initial_camera_position;
-        camera_position = y_rotate_mat * camera_position;
+        calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
 
         wire_frame_render(window, model_triangles, initial_camera_position, focal_length, WIDTH / 2);
         window.renderFrame();
