@@ -370,14 +370,15 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        float focalLength,
                                        float scaling) {
 
-    glm::vec3 forward = cameraPosition - vertexPosition;
+    glm::vec3 forward = vertexPosition - cameraPosition;
     glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), forward);
     glm::vec3 up = glm::cross(forward, right);
     glm::mat3 camera_orbit_orientation = {right, up, forward};
 
+    //cameraPosition = cameraPosition * camera_orbit_orientation;
     //vertexPosition = vertexPosition * camera_orbit_orientation;
     glm::vec3 diff =  vertexPosition - cameraPosition;
-    diff = diff * glm::inverse(camera_orbit_orientation);
+    //diff = diff *camera_orbit_orientation;
     float u = float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z;
     float v = float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z;
     float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
@@ -404,7 +405,7 @@ void wire_frame_render(DrawingWindow &window,
                            glm::vec3{0, 1, 0},
                            glm::vec3{sin(orbiting_radian), 0, cos(orbiting_radian)}};
 
-    cameraPosition = orbiting * cameraPosition;
+    //cameraPosition = orbiting * cameraPosition;
     for (const auto& triangle : model_triangles) {
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
@@ -539,6 +540,7 @@ int main(int argc, char *argv[]) {
                           initial_camera_position,
                           focal_length, WIDTH / 2,
                           orbiting_radian);
+
         window.renderFrame();
 	}
 }
