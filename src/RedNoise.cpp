@@ -365,20 +365,22 @@ void draw(DrawingWindow &window) {
 	}
 }
 
-CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
-                                       glm::vec3 vertexPosition,
-                                       float focalLength,
-                                       float scaling) {
-
+glm::mat3 lookAt(glm::vec3 cameraPosition) {
     glm::vec3 forward = glm::normalize( cameraPosition);
     glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), forward);
     glm::vec3 up = glm::cross(forward, right);
     glm::mat3 camera_orbit_orientation = {right, up, forward};
+    return camera_orbit_orientation;
+}
 
-    //cameraPosition = cameraPosition * camera_orbit_orientation;
-    //vertexPosition = vertexPosition * camera_orbit_orientation;
+CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
+                                       glm::vec3 vertexPosition,
+                                       float focalLength,
+                                       float scaling,
+                                       glm::mat3 camera_orbit_orientation) {
+
     glm::vec3 diff =  vertexPosition - cameraPosition;
-    diff = diff *camera_orbit_orientation;
+    diff = diff * camera_orbit_orientation;
     float u = float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z;
     float v = float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z;
     float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
@@ -406,12 +408,14 @@ void wire_frame_render(DrawingWindow &window,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
 
     cameraPosition = orbiting*cameraPosition;
+    glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
     for (const auto& triangle : model_triangles) {
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
         for (auto vertex : triangle.vertices) {
 
-            CanvasPoint sdl_vertex = getCanvasIntersectionPoint(cameraPosition, vertex, focalLength, image_plane_scale);
+            CanvasPoint sdl_vertex = getCanvasIntersectionPoint(cameraPosition, vertex, focalLength, image_plane_scale,
+                                                                camera_orbit_orientation);
             image_plane_triangle_vertices.push_back(sdl_vertex);
         }
 
