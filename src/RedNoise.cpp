@@ -154,11 +154,9 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
     }
 }
 
-void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, CanvasTriangle m_tria) {
+void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, CanvasTriangle m_tria, float det_T) {
     int round_x = int(round(x));
     int round_y = int(round(y));
-
-    float det_T = (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y);
 
     float lam1 = 1/det_T * ((m_tria.v1().y - m_tria.v2().y) * (x-m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (y - m_tria.v2().y));
     float lam2 = 1/det_T * ((m_tria.v2().y - m_tria.v0().y) * (x-m_tria.v2().x) + (m_tria.v0().x - m_tria.v2().x) * (y - m_tria.v2().y));
@@ -178,11 +176,17 @@ void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, 
         }
 }
 
+float calculate_det(CanvasTriangle m_tria) {
+    return (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y);
+}
+
 void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour,
                           CanvasTriangle mother_triangle) {
 
+    float det_T = calculate_det(mother_triangle);
+
     if (from.x == to.x && from.y == to.y) {
-        draw_pixel(window, from.x, from.y, colour, mother_triangle);
+        draw_pixel(window, from.x, from.y, colour, mother_triangle, det_T);
         return;
     }
 
@@ -196,7 +200,7 @@ void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint t
         float x = from.x + i*x_step_size;
         float y = from.y;
 
-        draw_pixel(window, x, y,  colour, mother_triangle);
+        draw_pixel(window, x, y,  colour, mother_triangle, det_T);
 
     }
 }
