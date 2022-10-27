@@ -154,53 +154,56 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
     }
 }
 
-void draw_pixel(DrawingWindow &window, float x, float y, float depth, const Colour& colour) {
+void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, CanvasTriangle m_tria) {
     int round_x = int(round(x));
     int round_y = int(round(y));
 
+    float det_T = (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y);
+
+    float lam1 = 1/det_T * ((m_tria.v1().y - m_tria.v2().y) * (x-m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (y - m_tria.v2().y));
+    float lam2 = 1/det_T * ((m_tria.v2().y - m_tria.v0().y) * (x-m_tria.v2().x) + (m_tria.v0().x - m_tria.v2().x) * (y - m_tria.v2().y));
+    float lam3 = 1 - lam1 - lam2;
+
+    float depth = lam1 * m_tria.v0().depth + lam2 * m_tria.v1().depth + lam3 * m_tria.v2().depth;
+
     if (!(round_x >= WIDTH || round_y >= HEIGHT || round_x <= 0 || round_y <= 0)) {
-        if (1/depth>depth_buffer[round_x][round_y]) {
+        if (depth>depth_buffer[round_x][round_y]) {
             if ( colour.green==0 && colour.red == 0 && colour.blue == 255) {
             }
 
-            depth_buffer[round_x][round_y] = 1/depth;
+            depth_buffer[round_x][round_y] = depth;
             colour_buffer[round_x][round_y] = colour;
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
-        } else {
-        }
+            }
         }
 }
 
-void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour) {
+void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour,
+                          CanvasTriangle mother_triangle) {
 
     if (from.x == to.x && from.y == to.y) {
-        draw_pixel(window, from.x, from.y, from.depth, colour);
+        draw_pixel(window, from.x, from.y, colour, mother_triangle);
         return;
     }
 
     float x_diff = to.x - from.x;
-    float depth_diff = to.depth-from.depth;
 
-    float numberOfSteps = std::max(abs(x_diff), depth_diff);
+    float numberOfSteps = abs(x_diff);
     float x_step_size = x_diff / numberOfSteps;
 
-    float depth_step_size = (depth_diff)/numberOfSteps;
-
     for (float i = 0; i <= (numberOfSteps); ++i) {
-
-        float depth = from.depth + i*depth_step_size;
-
 
         float x = from.x + i*x_step_size;
         float y = from.y;
 
-        draw_pixel(window, x, y, depth, colour);
+        draw_pixel(window, x, y,  colour, mother_triangle);
 
     }
 }
 
 void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
-                        CanvasPoint from_end, CanvasPoint to_end, const Colour& colour) {
+                        CanvasPoint from_end, CanvasPoint to_end, const Colour& colour,
+                        CanvasTriangle mother_triangle) {
     if ((from_end.x > WIDTH || from_end.x < 0) && (from_end.y > HEIGHT || from_end.y < 0) &&
     (to_end.x > WIDTH || to_end.x < 0) && (to_end.y > HEIGHT || to_end.y < 0) &&
     (start.x > WIDTH || start.x < 0) && (start.y > HEIGHT || start.y < 0))
@@ -209,19 +212,13 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
     float x_diff_to = from_end.x - start.x;
     float x_diff_from = to_end.x - start.x;
     float y_diff = to_end.y - start.y;
-    float from_depth_diff = from_end.depth - start.depth;
-    float to_depth_diff = to_end.depth - start.depth;
 
     float numberOfSteps_x = std::max(abs(x_diff_from), abs(x_diff_to));
-    float numberOfSteps_depth = std::max(abs(from_depth_diff), abs(to_depth_diff));
     float numberOfSteps = std::max(numberOfSteps_x, abs(y_diff));
-    numberOfSteps = std::max(numberOfSteps_depth, numberOfSteps);
 
     float x_step_size_from = x_diff_from / numberOfSteps;
     float x_step_size_to = x_diff_to / numberOfSteps;
     float y_step_size = y_diff / numberOfSteps;
-    float from_depth_step_size = (from_depth_diff)/numberOfSteps;
-    float to_depth_step_size = (to_depth_diff)/numberOfSteps;
 
     for (float i = 0.0; i <= numberOfSteps; ++i) {
         float x_from = start.x + i * x_step_size_from;
@@ -230,11 +227,10 @@ void fill_half_triangle(DrawingWindow &window, CanvasPoint start,
         float x_to = start.x + i * x_step_size_to;
         float y_to = start.y + i * y_step_size;
 
-        float from_depth = from_depth_step_size*i + start.depth;
-        float to_depth = to_depth_step_size*i + start.depth;
-        draw_line_with_depth(window, CanvasPoint(x_from, y_from, from_depth),
-                             CanvasPoint(x_to, y_to, to_depth),
-                             colour);
+        draw_line_with_depth(window, CanvasPoint(x_from, y_from),
+                             CanvasPoint(x_to, y_to),
+                             colour,
+                             mother_triangle);
 
     }
 }
@@ -327,9 +323,9 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
 
     // draw top triangle
 
-    fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour);
+    fill_half_triangle(window, vertices[0], mid_point, vertices[1], colour, triangle);
     // draw bottom triangle
-    fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour);
+    fill_half_triangle(window, vertices[2], mid_point, vertices[1], colour, triangle);
 
 }
 
@@ -381,10 +377,10 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
 
     glm::vec3 diff =  vertexPosition - cameraPosition;
     diff = diff * camera_orbit_orientation;
-    float u = float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z;
-    float v = float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z;
-    float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
-    return {u, v, relative_depth} ;
+    float u = round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
+    float v = round(float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z);
+    //float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+    return {u, v, abs(1/diff.z)} ;
 }
 
 void initialize_depth_buffer() {
