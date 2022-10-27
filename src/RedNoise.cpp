@@ -403,12 +403,15 @@ void wire_frame_render(DrawingWindow &window,
                         float orbiting_radian) {
 
     initialize_depth_buffer();
+
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
 
     cameraPosition = orbiting*cameraPosition;
+
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
+
     for (const auto& triangle : model_triangles) {
 
         std::vector<CanvasPoint> image_plane_triangle_vertices;
