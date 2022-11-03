@@ -402,6 +402,30 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
     return intersection;
 }
 
+void rayTracingRender(DrawingWindow &window,
+                      const std::vector<ModelTriangle>& model_triangles,
+                      glm::vec3 cameraPosition,
+                      float focalLength,
+                      float scaling,
+                      float orbiting_radian
+                      ) {
+    for (int u = 0; u <= WIDTH; ++u) {
+        float x = (float (u) / scaling) - float (WIDTH)/2;
+        for (int v = 0; v <= HEIGHT ; ++v) {
+            float y = (float (v) / scaling) - float (HEIGHT)/2;
+            glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
+            glm::vec3 direction = glm::normalize(image_plane_vertex - cameraPosition);
+
+            RayTriangleIntersection rayTriangleIntersection =
+                    getClosestIntersection(cameraPosition, direction, model_triangles);
+
+            window.setPixelColour(std::size_t (x), std::size_t (y),
+                                  colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
+        }
+    }
+
+}
+
 CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        glm::vec3 vertexPosition,
                                        float focalLength,
@@ -412,7 +436,6 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
     diff = diff * camera_orbit_orientation;
     float u = round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
     float v = round(float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z);
-    //float relative_depth = scaling*sqrt(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
     return {u, v, abs(1/diff.z)} ;
 }
 
