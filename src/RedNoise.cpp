@@ -374,10 +374,11 @@ glm::mat3 lookAt(glm::vec3 cameraPosition) {
 }
 
 bool closestIntersectionTests(glm::vec3 possibleSolution) {
-    if (((possibleSolution[1] >= 0.0) && (possibleSolution[1] <= 1.0)) ||
-            ((v >= 0.0) && (v <= 1.0)s))
-            (v >= 0.0) && (v <= 1.0)
-                                  (u + v) <= 1.0
+    return (((possibleSolution[1] >= 0.0) && (possibleSolution[1] <= 1.0)) &&
+            ((possibleSolution[2] >= 0.0) && (possibleSolution[2] <= 1.0)) &&
+            ((possibleSolution[1] + possibleSolution[2]) <= 1.0) &&
+            (possibleSolution[0] >= 0.0));
+
 }
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction, const std::vector<ModelTriangle>& triangles) {
@@ -390,10 +391,12 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         glm::mat3 DEMatrix(-ray_direction, e0, e1);
         glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
 
-        if (possibleSolution[0] < absolute_distance) {
-            absolute_distance = possibleSolution[0];
-            glm::vec3 r = triangles[i].vertices[0] + possibleSolution[1] * e0 + possibleSolution[2] * e1;
-            intersection = RayTriangleIntersection(r, possibleSolution[0], triangles[i], std::size_t(i));
+        if (closestIntersectionTests(possibleSolution)) {
+            if (possibleSolution[0] < absolute_distance) {
+                absolute_distance = possibleSolution[0];
+                glm::vec3 r = triangles[i].vertices[0] + possibleSolution[1] * e0 + possibleSolution[2] * e1;
+                intersection = RayTriangleIntersection(r, possibleSolution[0], triangles[i], std::size_t(i));
+            }
         }
     }
     return intersection;
