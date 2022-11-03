@@ -373,6 +373,13 @@ glm::mat3 lookAt(glm::vec3 cameraPosition) {
     return camera_orbit_orientation;
 }
 
+bool closestIntersectionTests(glm::vec3 possibleSolution) {
+    if (((possibleSolution[1] >= 0.0) && (possibleSolution[1] <= 1.0)) ||
+            ((v >= 0.0) && (v <= 1.0)s))
+            (v >= 0.0) && (v <= 1.0)
+                                  (u + v) <= 1.0
+}
+
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction, const std::vector<ModelTriangle>& triangles) {
     RayTriangleIntersection intersection;
     auto absolute_distance = float (INT32_MAX-1);
@@ -390,7 +397,6 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         }
     }
     return intersection;
-
 }
 
 CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
