@@ -11,7 +11,7 @@
 #include <TexturePoint.h>
 #include <TextureMap.h>
 #include "glm/mat3x3.hpp"
-
+#include "RayTriangleIntersection.h"
 #include "ModelTriangle.h"
 
 #define WIDTH 960
@@ -371,6 +371,26 @@ glm::mat3 lookAt(glm::vec3 cameraPosition) {
     glm::vec3 up = glm::cross(forward, right);
     glm::mat3 camera_orbit_orientation = {right, up, forward};
     return camera_orbit_orientation;
+}
+
+RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction, const std::vector<ModelTriangle>& triangles) {
+    RayTriangleIntersection intersection;
+    auto absolute_distance = float (INT32_MAX-1);
+    for (int i = 0; i < int (triangles.size()); ++i) {
+        glm::vec3 e0 = triangles[i].vertices[1] - triangles[i].vertices[0];
+        glm::vec3 e1 = triangles[i].vertices[2] - triangles[i].vertices[0];
+        glm::vec3 SPVector = camera_position - triangles[i].vertices[0];
+        glm::mat3 DEMatrix(-ray_direction, e0, e1);
+        glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
+
+        if (possibleSolution[0] < absolute_distance) {
+            absolute_distance = possibleSolution[0];
+            glm::vec3 r = triangles[i].vertices[0] + possibleSolution[1] * e0 + possibleSolution[2] * e1;
+            intersection = RayTriangleIntersection(r, possibleSolution[0], triangles[i], std::size_t(i));
+        }
+    }
+    return intersection;
+
 }
 
 CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
