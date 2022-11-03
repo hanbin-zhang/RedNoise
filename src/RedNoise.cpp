@@ -570,40 +570,41 @@ int main(int argc, char *argv[]) {
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
-    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
-    std::cout << ie << std::endl;
-    std::cout << ie.intersectedTriangle.colour << std::endl;
 
-//    while (true) {
-//		if (window.pollForInputEvents(event)) handleEvent(event, window,
-//                                                          &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
-//                                                          &is_rotate, &render_mode);
-//        window.clearPixels();
-//
-//        //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
-//
-//        if (is_rotate) {
-//            if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
-//            orbiting_radian += M_PI / 144;
-//        }
-//
-//        switch (render_mode) {
-//            case 1:
-//                Rasterised_render(window, model_triangles,
-//                                  initial_camera_position,
-//                                  focal_length, WIDTH / 2,
-//                                  orbiting_radian,
-//                                  true);
-//                break;
-//            default:
-//                Rasterised_render(window, model_triangles,
-//                                  initial_camera_position,
-//                                  focal_length, WIDTH / 2,
-//                                  orbiting_radian,
-//                                  false);
-//                break;
-//        }
-//
-//        window.renderFrame();
-//	}
+//    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
+//    std::cout << ie << std::endl;
+//    std::cout << ie.intersectedTriangle.colour << std::endl;
+
+    while (true) {
+		if (window.pollForInputEvents(event)) handleEvent(event, window,
+                                                          &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
+                                                          &is_rotate, &render_mode);
+        window.clearPixels();
+
+        //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
+
+        if (is_rotate) {
+            if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
+            orbiting_radian += M_PI / 144;
+        }
+
+        switch (render_mode) {
+            case 1:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  true);
+                break;
+            default:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  false);
+                break;
+        }
+
+        window.renderFrame();
+	}
 }
