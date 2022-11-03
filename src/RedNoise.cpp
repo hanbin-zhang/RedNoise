@@ -410,7 +410,7 @@ void rayTracingRender(DrawingWindow &window,
                       float orbiting_radian
                       ) {
     for (int u = 0; u < WIDTH; ++u) {
-        float x = (float (u) - float (WIDTH)/2) / scaling ;
+        float x = -1 * (float (u) - float (WIDTH)/2) / scaling ;
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
@@ -611,32 +611,28 @@ int main(int argc, char *argv[]) {
             orbiting_radian += M_PI / 144;
         }
 
-        rayTracingRender(window, model_triangles,
+        switch (render_mode) {
+            case 1:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  true);
+                break;
+            case 2:
+                rayTracingRender(window, model_triangles,
                                  initial_camera_position,
                                  focal_length, WIDTH / 2,
                                  orbiting_radian);
-
-//        switch (render_mode) {
-//            case 1:
-//                Rasterised_render(window, model_triangles,
-//                                  initial_camera_position,
-//                                  focal_length, WIDTH / 2,
-//                                  orbiting_radian,
-//                                  true);
-//                break;
-//            case 2:
-//                rayTracingRender(window, model_triangles,
-//                                 initial_camera_position,
-//                                 focal_length, WIDTH / 2,
-//                                 orbiting_radian);
-//            default:
-//                Rasterised_render(window, model_triangles,
-//                                  initial_camera_position,
-//                                  focal_length, WIDTH / 2,
-//                                  orbiting_radian,
-//                                  false);
-//                break;
-//        }
+                break;
+            default:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  false);
+                break;
+        }
 
         window.renderFrame();
 	}
