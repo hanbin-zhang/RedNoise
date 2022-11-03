@@ -558,6 +558,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_p) *is_rotate = ! *is_rotate;
         else if (event.key.keysym.sym == SDLK_r) *render_mode = 0;
         else if (event.key.keysym.sym == SDLK_t) *render_mode = 1;
+        else if (event.key.keysym.sym == SDLK_y) *render_mode = 2;
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -619,6 +620,11 @@ int main(int argc, char *argv[]) {
                                   orbiting_radian,
                                   true);
                 break;
+            case 2:
+                rayTracingRender(window, model_triangles,
+                                 initial_camera_position,
+                                 focal_length, WIDTH / 2,
+                                 orbiting_radian);
             default:
                 Rasterised_render(window, model_triangles,
                                   initial_camera_position,
