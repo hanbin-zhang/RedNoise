@@ -419,7 +419,7 @@ void rayTracingRender(DrawingWindow &window,
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, direction, model_triangles);
 
-            window.setPixelColour(std::size_t (x), std::size_t (y),
+            window.setPixelColour(std::size_t (u), std::size_t (v),
                                   colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
         }
     }
