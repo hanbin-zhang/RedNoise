@@ -395,15 +395,15 @@ void initialize_depth_buffer() {
     }
 }
 
-void wire_frame_render(DrawingWindow &window,
-                        const std::vector<ModelTriangle>& model_triangles,
-                        glm::vec3 cameraPosition,
-                        float focalLength,
-                        float image_plane_scale,
-                        float orbiting_radian) {
+void Rasterised_render(DrawingWindow &window,
+                       const std::vector<ModelTriangle>& model_triangles,
+                       glm::vec3 cameraPosition,
+                       float focalLength,
+                       float image_plane_scale,
+                       float orbiting_radian,
+                       bool is_wire_frame) {
 
     initialize_depth_buffer();
-
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
@@ -426,8 +426,13 @@ void wire_frame_render(DrawingWindow &window,
                                                              image_plane_triangle_vertices[1],
                                                              image_plane_triangle_vertices[2]);
 
-        draw_filled_triangles(window, image_plane_triangle,
-                              triangle.colour);
+        if (is_wire_frame) {
+            draw_stroked_triangles(window, image_plane_triangle,
+                                   triangle.colour);
+        } else {
+            draw_filled_triangles(window, image_plane_triangle,
+                                  triangle.colour);
+        }
 
     }
 
@@ -487,7 +492,8 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
     draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position, float* x_rotate, float* y_rotate) {
+void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
+                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
@@ -497,8 +503,9 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/180);
         else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (M_PI/180);
         else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (M_PI/180);
-
-
+        else if (event.key.keysym.sym == SDLK_p) *is_rotate = ! *is_rotate;
+        else if (event.key.keysym.sym == SDLK_r) *render_mode = 0;
+        else if (event.key.keysym.sym == SDLK_t) *render_mode = 1;
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -532,21 +539,38 @@ int main(int argc, char *argv[]) {
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
     float orbiting_radian = 0;
+    bool is_rotate = false;
+    int render_mode = 0;
 
     while (true) {
-		if (window.pollForInputEvents(event)) handleEvent(event, window, &initial_camera_position, &x_rotate_radian, &y_rotate_radian);
+		if (window.pollForInputEvents(event)) handleEvent(event, window,
+                                                          &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
+                                                          &is_rotate, &render_mode);
         window.clearPixels();
 
         //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
 
-        if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
-        orbiting_radian += M_PI / 72;
+        if (is_rotate) {
+            if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
+            orbiting_radian += M_PI / 144;
+        }
 
-
-        wire_frame_render(window, model_triangles,
-                          initial_camera_position,
-                          focal_length, WIDTH / 2,
-                          orbiting_radian);
+        switch (render_mode) {
+            case 1:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  true);
+                break;
+            default:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  false);
+                break;
+        }
 
         window.renderFrame();
 	}
