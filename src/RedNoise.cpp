@@ -390,7 +390,7 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         glm::vec3 SPVector = camera_position - triangles[i].vertices[0];
         glm::mat3 DEMatrix(-ray_direction, e0, e1);
         glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
-
+        //std::cout << possibleSolution[0] << ", " << possibleSolution[1]<<","<< possibleSolution[2] << std::endl;
         if (closestIntersectionTests(possibleSolution)) {
             if (possibleSolution[0] < absolute_distance) {
                 absolute_distance = possibleSolution[0];
@@ -409,16 +409,15 @@ void rayTracingRender(DrawingWindow &window,
                       float scaling,
                       float orbiting_radian
                       ) {
-    for (int u = 0; u <= WIDTH; ++u) {
-        float x = (float (u) / scaling) - float (WIDTH)/2;
-        for (int v = 0; v <= HEIGHT ; ++v) {
-            float y = (float (v) / scaling) - float (HEIGHT)/2;
+    for (int u = 0; u < WIDTH; ++u) {
+        float x = (float (u) - float (WIDTH)/2) / scaling ;
+        for (int v = 0; v < HEIGHT ; ++v) {
+            float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
             glm::vec3 direction = glm::normalize(image_plane_vertex - cameraPosition);
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, direction, model_triangles);
-
             window.setPixelColour(std::size_t (u), std::size_t (v),
                                   colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
         }
@@ -612,27 +611,32 @@ int main(int argc, char *argv[]) {
             orbiting_radian += M_PI / 144;
         }
 
-        switch (render_mode) {
-            case 1:
-                Rasterised_render(window, model_triangles,
-                                  initial_camera_position,
-                                  focal_length, WIDTH / 2,
-                                  orbiting_radian,
-                                  true);
-                break;
-            case 2:
-                rayTracingRender(window, model_triangles,
+        rayTracingRender(window, model_triangles,
                                  initial_camera_position,
                                  focal_length, WIDTH / 2,
                                  orbiting_radian);
-            default:
-                Rasterised_render(window, model_triangles,
-                                  initial_camera_position,
-                                  focal_length, WIDTH / 2,
-                                  orbiting_radian,
-                                  false);
-                break;
-        }
+
+//        switch (render_mode) {
+//            case 1:
+//                Rasterised_render(window, model_triangles,
+//                                  initial_camera_position,
+//                                  focal_length, WIDTH / 2,
+//                                  orbiting_radian,
+//                                  true);
+//                break;
+//            case 2:
+//                rayTracingRender(window, model_triangles,
+//                                 initial_camera_position,
+//                                 focal_length, WIDTH / 2,
+//                                 orbiting_radian);
+//            default:
+//                Rasterised_render(window, model_triangles,
+//                                  initial_camera_position,
+//                                  focal_length, WIDTH / 2,
+//                                  orbiting_radian,
+//                                  false);
+//                break;
+//        }
 
         window.renderFrame();
 	}
