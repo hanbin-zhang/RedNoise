@@ -381,7 +381,8 @@ bool closestIntersectionTests(glm::vec3 possibleSolution) {
 
 }
 
-RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction, const std::vector<ModelTriangle>& triangles) {
+RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
+                                               const std::vector<ModelTriangle>& triangles) {
     RayTriangleIntersection intersection;
     auto absolute_distance = float (INT32_MAX-1);
     for (int i = 0; i < int (triangles.size()); ++i) {
@@ -409,12 +410,21 @@ void rayTracingRender(DrawingWindow &window,
                       float scaling,
                       float orbiting_radian
                       ) {
+    glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
+                           0, 1, 0,
+                           -sin(orbiting_radian), 0, cos(orbiting_radian)};
+
+    cameraPosition = orbiting*cameraPosition;
+
+    glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
+
     for (int u = 0; u < WIDTH; ++u) {
         float x = -1 * (float (u) - float (WIDTH)/2) / scaling ;
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
             glm::vec3 direction = glm::normalize(image_plane_vertex - cameraPosition);
+            direction = glm::normalize(direction * glm::inverse(camera_orbit_orientation));
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, direction, model_triangles);
@@ -455,6 +465,7 @@ void Rasterised_render(DrawingWindow &window,
                        bool is_wire_frame) {
 
     initialize_depth_buffer();
+
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
