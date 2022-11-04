@@ -423,11 +423,11 @@ void rayTracingRender(DrawingWindow &window,
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
-            glm::vec3 direction = glm::normalize(image_plane_vertex - cameraPosition);
-            direction = glm::normalize(direction * glm::inverse(camera_orbit_orientation));
+            glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
+            imagePlaneDirection = glm::normalize(imagePlaneDirection * glm::inverse(camera_orbit_orientation));
 
             RayTriangleIntersection rayTriangleIntersection =
-                    getClosestIntersection(cameraPosition, direction, model_triangles);
+                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
             window.setPixelColour(std::size_t (u), std::size_t (v),
                                   colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
         }
