@@ -424,8 +424,8 @@ void rayTracingRender(DrawingWindow &window,
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
-            glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
-            imagePlaneDirection = glm::normalize(imagePlaneDirection * glm::inverse(camera_orbit_orientation));
+            glm::vec3 imagePlaneDirection = image_plane_vertex - cameraPosition;
+            imagePlaneDirection = glm::normalize(glm::inverse(camera_orbit_orientation) * imagePlaneDirection  );
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
