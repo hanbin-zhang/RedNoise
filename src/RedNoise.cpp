@@ -391,7 +391,7 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         glm::vec3 SPVector = camera_position - triangles[i].vertices[0];
         glm::mat3 DEMatrix(-ray_direction, e0, e1);
         glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
-        //std::cout << possibleSolution[0] << ", " << possibleSolution[1]<<","<< possibleSolution[2] << std::endl;
+
         if (closestIntersectionTests(possibleSolution)) {
             if (possibleSolution[0] < absolute_distance) {
                 absolute_distance = possibleSolution[0];
@@ -408,7 +408,8 @@ void rayTracingRender(DrawingWindow &window,
                       glm::vec3 cameraPosition,
                       float focalLength,
                       float scaling,
-                      float orbiting_radian
+                      float orbiting_radian,
+                      glm::vec3 lightSource
                       ) {
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
@@ -428,8 +429,20 @@ void rayTracingRender(DrawingWindow &window,
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
-            window.setPixelColour(std::size_t (u), std::size_t (v),
-                                  colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
+
+            glm::vec3 actualIntersection = rayTriangleIntersection.intersectionPoint + rayTriangleIntersection.intersectedTriangle.vertices[0];
+
+            glm::vec3 toLightDirection = (lightSource-actualIntersection);
+
+            RayTriangleIntersection lightSourceIntersection =
+                    getClosestIntersection(actualIntersection, toLightDirection, model_triangles);
+
+            auto lightSourceDistance = glm::distance(lightSource, actualIntersection);
+
+            if (lightSourceIntersection.distanceFromCamera <= lightSourceDistance) {
+                window.setPixelColour(std::size_t (u), std::size_t (v),
+                                      colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
+            }
         }
     }
 
@@ -604,6 +617,7 @@ int main(int argc, char *argv[]) {
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
+    glm::vec3 lightSource = {0.0, 1.0, 0.0};
 
 //    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
 //    std::cout << ie << std::endl;
@@ -634,7 +648,8 @@ int main(int argc, char *argv[]) {
                 rayTracingRender(window, model_triangles,
                                  initial_camera_position,
                                  focal_length, WIDTH / 2,
-                                 orbiting_radian);
+                                 orbiting_radian,
+                                 lightSource);
                 break;
             default:
                 Rasterised_render(window, model_triangles,
