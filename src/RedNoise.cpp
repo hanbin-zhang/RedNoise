@@ -420,7 +420,7 @@ void rayTracingRender(DrawingWindow &window,
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
 
     for (int u = 0; u < WIDTH; ++u) {
-        float x = -1 * (float (u) - float (WIDTH)/2) / scaling ;
+        float x = (float (u) - float (WIDTH)/2) / scaling ;
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
@@ -430,16 +430,12 @@ void rayTracingRender(DrawingWindow &window,
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
 
-            glm::vec3 actualIntersection = rayTriangleIntersection.intersectionPoint + rayTriangleIntersection.intersectedTriangle.vertices[0];
+            glm::vec3 fromLightDirection = glm::normalize(rayTriangleIntersection.intersectionPoint - lightSource);
 
-            glm::vec3 toLightDirection = (lightSource-actualIntersection);
+            RayTriangleIntersection lightIntersection =
+                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
-            RayTriangleIntersection lightSourceIntersection =
-                    getClosestIntersection(actualIntersection, toLightDirection, model_triangles);
-
-            auto lightSourceDistance = glm::distance(lightSource, actualIntersection);
-
-            if (lightSourceIntersection.distanceFromCamera <= lightSourceDistance) {
+            if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
                 window.setPixelColour(std::size_t (u), std::size_t (v),
                                       colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
             }
@@ -456,7 +452,8 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
 
     glm::vec3 diff =  vertexPosition - cameraPosition;
     diff = diff * camera_orbit_orientation;
-    float u = round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
+
+    float u = float (WIDTH) - round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
     float v = round(float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z);
     return {u, v, abs(1/diff.z)} ;
 }
@@ -617,7 +614,7 @@ int main(int argc, char *argv[]) {
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
-    glm::vec3 lightSource = {0.0, 1.0, 0.0};
+    glm::vec3 lightSource = {0.0, 0.5, 0.0};
 
 //    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
 //    std::cout << ie << std::endl;
