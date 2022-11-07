@@ -616,10 +616,6 @@ int main(int argc, char *argv[]) {
     int render_mode = 0;
     glm::vec3 lightSource = {0.0, 0.5, 0.0};
 
-//    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
-//    std::cout << ie << std::endl;
-//    std::cout << ie.intersectedTriangle.colour << std::endl;
-
     while (true) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
