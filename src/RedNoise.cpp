@@ -432,14 +432,15 @@ void rayTracingRender(DrawingWindow &window,
 
             glm::vec3 actualIntersection = rayTriangleIntersection.intersectionPoint;
 
-            glm::vec3 toLightDirection = (lightSource-actualIntersection);
+            glm::vec3 toLightDirection = glm::normalize(lightSource-actualIntersection);
 
             RayTriangleIntersection lightSourceIntersection =
                     getClosestIntersection(actualIntersection, toLightDirection, model_triangles);
 
             auto lightSourceDistance = glm::distance(lightSource, actualIntersection);
 
-            if (lightSourceIntersection.distanceFromCamera < lightSourceDistance || lightSourceIntersection.distanceFromCamera == 0) {
+            if (lightSourceIntersection.distanceFromCamera >= lightSourceDistance ||
+            lightSourceIntersection.triangleIndex == rayTriangleIntersection.triangleIndex) {
                 window.setPixelColour(std::size_t (u), std::size_t (v),
                                       colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
             }
