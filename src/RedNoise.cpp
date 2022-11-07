@@ -420,7 +420,7 @@ void rayTracingRender(DrawingWindow &window,
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
 
     for (int u = 0; u < WIDTH; ++u) {
-        float x = -1 * (float (u) - float (WIDTH)/2) / scaling ;
+        float x = (float (u) - float (WIDTH)/2) / scaling ;
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
@@ -430,7 +430,7 @@ void rayTracingRender(DrawingWindow &window,
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
 
-            glm::vec3 actualIntersection = rayTriangleIntersection.intersectionPoint + rayTriangleIntersection.intersectedTriangle.vertices[0];
+            glm::vec3 actualIntersection = rayTriangleIntersection.intersectionPoint;
 
             glm::vec3 toLightDirection = (lightSource-actualIntersection);
 
@@ -617,7 +617,7 @@ int main(int argc, char *argv[]) {
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
-    glm::vec3 lightSource = {0.0, 1.0, 0.0};
+    glm::vec3 lightSource = {0.0, 0.5, 0.0};
 
 //    RayTriangleIntersection ie = getClosestIntersection(initial_camera_position, -initial_camera_position, model_triangles);
 //    std::cout << ie << std::endl;
