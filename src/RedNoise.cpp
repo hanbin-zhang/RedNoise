@@ -439,7 +439,7 @@ void rayTracingRender(DrawingWindow &window,
 
             auto lightSourceDistance = glm::distance(lightSource, actualIntersection);
 
-            if (lightSourceIntersection.distanceFromCamera <= lightSourceDistance) {
+            if (lightSourceIntersection.distanceFromCamera < lightSourceDistance || lightSourceIntersection.distanceFromCamera == 0) {
                 window.setPixelColour(std::size_t (u), std::size_t (v),
                                       colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
             }
