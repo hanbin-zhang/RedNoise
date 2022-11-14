@@ -100,7 +100,8 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
 
                 current_triangle.vertices[i-1] = vertices[std::stoi(facets_vertex_string[0])-1];
             }
-
+            current_triangle.normal = glm::normalize(glm::cross((current_triangle.vertices[1] - current_triangle.vertices[0]),
+                                                 (current_triangle.vertices[2] - current_triangle.vertices[0])));
             triangles.push_back(current_triangle);
         }
     }
@@ -395,12 +396,22 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         if (closestIntersectionTests(possibleSolution)) {
             if (possibleSolution[0] < absolute_distance) {
                 absolute_distance = possibleSolution[0];
-                glm::vec3 r = triangles[i].vertices[0] + possibleSolution[1] * e0 + possibleSolution[2] * e1;
+                glm::vec3 r = camera_position + ray_direction * possibleSolution[0];
                 intersection = RayTriangleIntersection(r, possibleSolution[0], triangles[i], std::size_t(i));
             }
         }
     }
     return intersection;
+}
+
+float proximityParameter(glm::vec3 lightSource, glm::vec3 vertexPosition, float lightIntensity) {
+    float distance = glm::length(lightSource - vertexPosition);
+
+    // 1/4πr2
+    float para = lightIntensity / float (0.5 * M_PI * distance * distance);
+    if (para <= 0.0) return 0.0;
+    else if (para > 1.0) return 1.0;
+    else return para;
 }
 
 void rayTracingRender(DrawingWindow &window,
@@ -436,8 +447,14 @@ void rayTracingRender(DrawingWindow &window,
                     getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
+                float proximityPara = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 1.0);
+                //std::cout << proximityPara<< std::endl;
+                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * proximityPara,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * proximityPara,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * proximityPara
+                                                );
                 window.setPixelColour(std::size_t (u), std::size_t (v),
-                                      colour_uint32(rayTriangleIntersection.intersectedTriangle.colour));
+                                      colour_uint32(proximityColour));
             }
         }
     }
@@ -565,7 +582,8 @@ void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, Texture
 }
 
 void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
-                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode) {
+                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
+                 float* lightX, float* lightY, float* lightZ) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
@@ -579,6 +597,12 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_r) *render_mode = 0;
         else if (event.key.keysym.sym == SDLK_t) *render_mode = 1;
         else if (event.key.keysym.sym == SDLK_y) *render_mode = 2;
+        else if (event.key.keysym.sym == SDLK_f) *lightX += 0.1;
+        else if (event.key.keysym.sym == SDLK_v) *lightX -= 0.1;
+        else if (event.key.keysym.sym == SDLK_g) *lightY += 0.1;
+        else if (event.key.keysym.sym == SDLK_b) *lightY -= 0.1;
+        else if (event.key.keysym.sym == SDLK_h) *lightZ += 0.1;
+        else if (event.key.keysym.sym == SDLK_n) *lightZ -= 0.1;
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -614,16 +638,19 @@ int main(int argc, char *argv[]) {
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
-    glm::vec3 lightSource = {0.0, 0.5, 0.0};
+    float lightX = 0.0;
+    float lightY = 0.6;
+    float lightZ = 0.3;
+
 
     while (true) {
+        glm::vec3 lightSource = {lightX, lightY, lightZ};
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
-                                                          &is_rotate, &render_mode);
+                                                          &is_rotate, &render_mode ,&lightX, &lightY, &lightZ);
         window.clearPixels();
 
         //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
-
         if (is_rotate) {
             if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
             orbiting_radian += M_PI / 144;
