@@ -408,10 +408,33 @@ float proximityParameter(glm::vec3 lightSource, glm::vec3 vertexPosition, float 
     float distance = glm::length(lightSource - vertexPosition);
 
     // 1/4πr2
-    float para = lightIntensity / float (0.5 * M_PI * distance * distance);
+    float para = lightIntensity / float (4 * M_PI * distance * distance);
     if (para <= 0.0) return 0.0;
     else if (para > 1.0) return 1.0;
     else return para;
+}
+
+float angleOfIncidentParam(const RayTriangleIntersection& intersection, glm::vec3 lightSource) {
+    glm::vec3 toLightDirection = glm::normalize(lightSource - intersection.intersectionPoint);
+    return glm::clamp<float>(
+            glm::dot(intersection.intersectedTriangle.normal, toLightDirection),
+            0.0, 1.0);
+}
+
+float specularParam(const RayTriangleIntersection& intersection, glm::vec3 lightSource, glm::vec3 cameraPosition) {
+    glm::vec3 ri = glm::normalize(intersection.intersectionPoint - lightSource);
+    glm::vec3 reflection = ri - float (2.0) * intersection.intersectedTriangle.normal * (glm::dot(ri, intersection.intersectedTriangle.normal));
+    glm::vec3 view = glm::normalize(cameraPosition - intersection.intersectionPoint);
+    auto param = glm::clamp<float>(glm::dot(reflection, view), 0.0, 1.0);
+    return param;
+
+}
+
+float lightParam() {
+    float proximityParam = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 16.0);
+    float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource);
+    float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
 }
 
 void rayTracingRender(DrawingWindow &window,
@@ -447,12 +470,22 @@ void rayTracingRender(DrawingWindow &window,
                     getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
-                float proximityPara = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 1.0);
-                //std::cout << proximityPara<< std::endl;
-                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * proximityPara,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * proximityPara,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * proximityPara
+                float proximityParam = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 16.0);
+                float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource);
+                float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition);
+                auto light_param = glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
+                //std::cout << light_param<< std::endl;
+                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
                                                 );
+                window.setPixelColour(std::size_t (u), std::size_t (v),
+                                      colour_uint32(proximityColour));
+            } else {
+                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * 0.2,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * 0.2,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * 0.2
+                );
                 window.setPixelColour(std::size_t (u), std::size_t (v),
                                       colour_uint32(proximityColour));
             }
