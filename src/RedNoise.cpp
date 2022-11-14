@@ -94,7 +94,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
-            current_triangle.colour = current_colour;
+            current_triangle.colour = Colour(255, 0, 0);
             for (int i = 1; i < int(facets_string.size()); ++i) {
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
 
@@ -445,21 +445,21 @@ void rayTracingRender(DrawingWindow &window,
                       float orbiting_radian,
                       glm::vec3 lightSource
                       ) {
-    glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
-                           0, 1, 0,
-                           -sin(orbiting_radian), 0, cos(orbiting_radian)};
+//    glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
+//                           0, 1, 0,
+//                           -sin(orbiting_radian), 0, cos(orbiting_radian)};
+//
+//    cameraPosition = orbiting*cameraPosition;
 
-    cameraPosition = orbiting*cameraPosition;
-
-    glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
+   // glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
 
     for (int u = 0; u < WIDTH; ++u) {
-        float x = (float (u) - float (WIDTH)/2) / scaling ;
+        float x = (float (u) - float (WIDTH)/2) / scaling / focalLength * (cameraPosition.z-focalLength) ;
         for (int v = 0; v < HEIGHT ; ++v) {
-            float y = -1 * (float (v)- float (HEIGHT)/2) / scaling ;
+            float y = -1 * (float (v)- float (HEIGHT)/2) / scaling / focalLength * (cameraPosition.z-focalLength);
             glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
-            imagePlaneDirection = glm::normalize(glm::inverse(camera_orbit_orientation) * imagePlaneDirection  );
+            //imagePlaneDirection = glm::normalize(glm::inverse(camera_orbit_orientation) * imagePlaneDirection  );
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
@@ -499,7 +499,7 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        glm::mat3 camera_orbit_orientation) {
 
     glm::vec3 diff =  vertexPosition - cameraPosition;
-    diff = diff * camera_orbit_orientation;
+    //diff = diff * camera_orbit_orientation;
 
     float u = float (WIDTH) - round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
     float v = round(float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z);
@@ -661,17 +661,17 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("sphere.obj", "cornell-box.mtl", 0.35);
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 3.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
-    float lightX = 0.0;
-    float lightY = 0.6;
-    float lightZ = 0.3;
+    float lightX = 0.2;
+    float lightY = 0.7;
+    float lightZ = 1.3;
 
 
     while (true) {
@@ -686,7 +686,9 @@ int main(int argc, char *argv[]) {
             if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
             orbiting_radian += M_PI / 144;
         }
-
+//        std::cout << "x:" << lightX << std::endl;
+//        std::cout << "y:" << lightY << std::endl;
+//        std::cout << "z:" << lightZ << std::endl;
         switch (render_mode) {
             case 1:
                 Rasterised_render(window, model_triangles,
