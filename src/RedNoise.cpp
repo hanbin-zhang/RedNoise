@@ -430,7 +430,7 @@ float specularParam(const RayTriangleIntersection& intersection, glm::vec3 light
 
 }
 
-float lightParam() {
+float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, RayTriangleIntersection rayTriangleIntersection) {
     float proximityParam = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 16.0);
     float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource);
     float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition);
@@ -470,10 +470,8 @@ void rayTracingRender(DrawingWindow &window,
                     getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
-                float proximityParam = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 16.0);
-                float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource);
-                float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition);
-                auto light_param = glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
+
+                auto light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection);
                 //std::cout << light_param<< std::endl;
                 Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
                                                 float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
