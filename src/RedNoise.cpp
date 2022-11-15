@@ -457,7 +457,7 @@ void rayTracingRender(DrawingWindow &window,
         float x = (float (u) - float (WIDTH)/2) / scaling / focalLength * (cameraPosition.z-focalLength) ;
         for (int v = 0; v < HEIGHT ; ++v) {
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling / focalLength * (cameraPosition.z-focalLength);
-            glm::vec3 image_plane_vertex = glm::vec3 {x, y, cameraPosition.z-focalLength};
+            glm::vec3 image_plane_vertex = glm::vec3 {x+cameraPosition.x, y+cameraPosition.y, cameraPosition.z-focalLength};
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
             //imagePlaneDirection = glm::normalize(glm::inverse(camera_orbit_orientation) * imagePlaneDirection  );
 
@@ -662,7 +662,7 @@ int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<ModelTriangle> model_triangles = read_OBJ_files("sphere.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 3.0);
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.5, 3.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
@@ -686,9 +686,7 @@ int main(int argc, char *argv[]) {
             if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
             orbiting_radian += M_PI / 144;
         }
-//        std::cout << "x:" << lightX << std::endl;
-//        std::cout << "y:" << lightY << std::endl;
-//        std::cout << "z:" << lightZ << std::endl;
+
         switch (render_mode) {
             case 1:
                 Rasterised_render(window, model_triangles,
