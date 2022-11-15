@@ -94,7 +94,8 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
-            current_triangle.colour = Colour(255, 0, 0);
+            //current_triangle.colour = Colour(255, 0, 0);
+            current_triangle.colour = current_colour;
             for (int i = 1; i < int(facets_string.size()); ++i) {
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
 
@@ -155,13 +156,27 @@ void draw_texture_line(DrawingWindow &window, CanvasPoint from, CanvasPoint to, 
     }
 }
 
+float calculate_det(CanvasTriangle m_tria) {
+    return (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y);
+}
+
+glm::vec3 barycentricParams(CanvasTriangle m_tria, float x, float y) {
+    float det_T = calculate_det(m_tria);
+    float lam1 = 1/det_T * ((m_tria.v1().y - m_tria.v2().y) * (x-m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (y - m_tria.v2().y));
+    float lam2 = 1/det_T * ((m_tria.v2().y - m_tria.v0().y) * (x-m_tria.v2().x) + (m_tria.v0().x - m_tria.v2().x) * (y - m_tria.v2().y));
+    float lam3 = 1 - lam1 - lam2;
+    return glm::vec3 {lam1, lam2, lam3};
+}
+
 void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, CanvasTriangle m_tria, float det_T) {
     int round_x = int(round(x));
     int round_y = int(round(y));
 
-    float lam1 = 1/det_T * ((m_tria.v1().y - m_tria.v2().y) * (x-m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (y - m_tria.v2().y));
-    float lam2 = 1/det_T * ((m_tria.v2().y - m_tria.v0().y) * (x-m_tria.v2().x) + (m_tria.v0().x - m_tria.v2().x) * (y - m_tria.v2().y));
-    float lam3 = 1 - lam1 - lam2;
+    glm::vec3 lambdas = barycentricParams(m_tria, x, y);
+
+    float lam1 = lambdas[0];
+    float lam2 = lambdas[1];
+    float lam3 = lambdas[2];
 
     float depth = lam1 * m_tria.v0().depth + lam2 * m_tria.v1().depth + lam3 * m_tria.v2().depth;
 
@@ -175,10 +190,6 @@ void draw_pixel(DrawingWindow &window, float x, float y,  const Colour& colour, 
             window.setPixelColour(size_t(round_x), size_t(round_y), colour_uint32(colour));
             }
         }
-}
-
-float calculate_det(CanvasTriangle m_tria) {
-    return (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y);
 }
 
 void draw_line_with_depth(DrawingWindow &window, CanvasPoint from, CanvasPoint to, const Colour& colour,
@@ -472,7 +483,6 @@ void rayTracingRender(DrawingWindow &window,
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
 
                 auto light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection);
-                //std::cout << light_param<< std::endl;
                 Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
                                                 float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
                                                 float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
@@ -499,7 +509,7 @@ CanvasPoint getCanvasIntersectionPoint(glm::vec3 cameraPosition,
                                        glm::mat3 camera_orbit_orientation) {
 
     glm::vec3 diff =  vertexPosition - cameraPosition;
-    //diff = diff * camera_orbit_orientation;
+    diff = diff * camera_orbit_orientation;
 
     float u = float (WIDTH) - round(float(WIDTH)/2 + scaling*focalLength * (diff.x) / diff.z);
     float v = round(float(HEIGHT)/2 + scaling*focalLength * (diff.y) / diff.z);
@@ -661,8 +671,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("sphere.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.5, 3.0);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
