@@ -94,8 +94,8 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
-            //current_triangle.colour = Colour(255, 0, 0);
-            current_triangle.colour = current_colour;
+            current_triangle.colour = Colour(255, 0, 0);
+            //current_triangle.colour = current_colour;
             for (int i = 1; i < int(facets_string.size()); ++i) {
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
 
@@ -415,6 +415,33 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
     return intersection;
 }
 
+glm::vec3 calculateVertexNormal(const std::vector<ModelTriangle>& model_triangles,
+                                glm::vec3 vertex) {
+    int involveFaceNum = 0;
+    glm::vec3 involveFaceSum = glm::vec3 {0, 0, 0};
+
+    for (const auto& triangle : model_triangles) {
+        if (triangle.vertices[0] == vertex ||
+            triangle.vertices[1] == vertex ||
+            triangle.vertices[2] == vertex ){
+            involveFaceNum++;
+            involveFaceSum = involveFaceSum + triangle.normal;
+        }
+    }
+    return glm::normalize(involveFaceSum / float (involveFaceNum));
+}
+
+glm::vec3 calculateInterpolatingNormal(const std::vector<ModelTriangle>& model_triangles,
+                                       const RayTriangleIntersection& intersection,
+                                       ) {
+    glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
+    glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
+    glm::vec3 normalV2 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[2]);
+
+    glm::vec3 lambdas = barycentricParams(intersection.intersectedTriangle)
+
+}
+
 float proximityParameter(glm::vec3 lightSource, glm::vec3 vertexPosition, float lightIntensity) {
     float distance = glm::length(lightSource - vertexPosition);
 
@@ -441,7 +468,7 @@ float specularParam(const RayTriangleIntersection& intersection, glm::vec3 light
 
 }
 
-float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, RayTriangleIntersection rayTriangleIntersection) {
+float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, const RayTriangleIntersection& rayTriangleIntersection) {
     float proximityParam = proximityParameter(lightSource, rayTriangleIntersection.intersectionPoint, 16.0);
     float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource);
     float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition);
@@ -671,8 +698,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("sphere.obj", "cornell-box.mtl", 0.35);
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.5, 3.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
