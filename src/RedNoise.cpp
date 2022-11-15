@@ -524,8 +524,10 @@ void rayTracingRender(DrawingWindow &window,
 
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
 
-                auto light_param = calculateInterpolatingNormal(model_triangles, rayTriangleIntersection,
-                                                                      lightSource, cameraPosition);
+//                auto light_param = calculateInterpolatingNormal(model_triangles, rayTriangleIntersection,
+//                                                                      lightSource, cameraPosition);
+
+                auto light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection, rayTriangleIntersection.intersectedTriangle.normal);
 
                 Colour targetColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
                                                 float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
