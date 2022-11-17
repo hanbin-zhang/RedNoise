@@ -20,6 +20,8 @@
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
+enum shadingType {Flat, Gourand, Phong};
+int shading = Flat;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -425,7 +427,7 @@ glm::vec3 calculateVertexNormal(const std::vector<ModelTriangle>& model_triangle
             triangle.vertices[1] == vertex ||
             triangle.vertices[2] == vertex ){
             involveFaceNum++;
-            involveFaceSum = involveFaceSum + triangle.normal;
+            involveFaceSum += triangle.normal;
         }
     }
     return glm::normalize(involveFaceSum / float (involveFaceNum));
@@ -441,39 +443,38 @@ float proximityParameter(glm::vec3 lightSource, glm::vec3 vertexPosition, float 
     else return para;
 }
 
-float angleOfIncidentParam(const RayTriangleIntersection& intersection, glm::vec3 lightSource, glm::vec3 targetNormal) {
-    glm::vec3 toLightDirection = glm::normalize(lightSource - intersection.intersectionPoint);
+float angleOfIncidentParam(glm::vec3 lightSource, glm::vec3 vertex,glm::vec3 targetNormal) {
+    glm::vec3 toLightDirection = glm::normalize(lightSource - vertex);
     return glm::clamp<float>(
             glm::dot(targetNormal, toLightDirection),
             0.0, 1.0);
 }
 
-float specularParam(const RayTriangleIntersection& intersection, glm::vec3 lightSource,
-                    glm::vec3 cameraPosition, glm::vec3 targetNormal) {
-    glm::vec3 ri = glm::normalize(intersection.intersectionPoint - lightSource);
+float specularParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 targetNormal, glm::vec3 vertex) {
+    glm::vec3 ri = glm::normalize(vertex - lightSource);
     glm::vec3 reflection = ri - float (2.0) * targetNormal * (glm::dot(ri, targetNormal));
-    glm::vec3 view = glm::normalize(cameraPosition - intersection.intersectionPoint);
+    glm::vec3 view = glm::normalize(cameraPosition - vertex);
     auto param = glm::clamp<float>(glm::dot(reflection, view), 0.0, 1.0);
     return param;
 
 }
 
-float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, const RayTriangleIntersection& rayTriangleIntersection,
-                 glm::vec3 targetNormal) {
+float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vertex,
+                 const std::vector<ModelTriangle>& model_triangles, glm::vec3 targetNormal, bool giveNormal) {
+    if (!giveNormal) targetNormal = calculateVertexNormal(model_triangles, vertex);
+
     float proximityParam = proximityParameter(lightSource,
-                                              rayTriangleIntersection.intersectionPoint, 16.0);
-    float aoIParam = angleOfIncidentParam(rayTriangleIntersection, lightSource, targetNormal);
-    float specularP = specularParam(rayTriangleIntersection, lightSource, cameraPosition, targetNormal);
+                                              vertex, 16.0);
+    float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
+    float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
     return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
 }
 
-float calculateInterpolatingNormal(const std::vector<ModelTriangle>& model_triangles,
-                                       const RayTriangleIntersection& intersection,
-                                       glm::vec3 lightSource, glm::vec3 cameraPosition) {
+float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
+                   const RayTriangleIntersection& intersection,
+                   glm::vec3 lightSource, glm::vec3 cameraPosition) {
+
     glm::vec3 vertex = intersection.intersectionPoint;
-    glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
-    glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
-    glm::vec3 normalV2 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[2]);
 
     CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
                                                                intersection.intersectedTriangle.vertices[0].y),
@@ -484,11 +485,42 @@ float calculateInterpolatingNormal(const std::vector<ModelTriangle>& model_trian
 
     glm::vec3 lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
 
-    return lambdas[0] * lightParam(lightSource, cameraPosition, intersection, normalV0)
-        + lambdas[1] * lightParam(lightSource, cameraPosition, intersection, normalV1)
-        + lambdas[2] * lightParam(lightSource, cameraPosition, intersection, normalV2);
+    float lightV0 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[0],
+                               model_triangles, glm::vec3{0, 0, 0},false);
+    float lightV1 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[1],
+                               model_triangles, glm::vec3{0, 0, 0},false);
+    float lightV2 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[2],
+                               model_triangles, glm::vec3{0, 0, 0},false);
+
+
+    return glm::clamp<float>(lightV0*lambdas[0] + lightV1*lambdas[1] + lightV2*lambdas[2], 0.0, 1.0);
 }
 
+float phongLight(const std::vector<ModelTriangle>& model_triangles,
+                   const RayTriangleIntersection& intersection,
+                   glm::vec3 lightSource, glm::vec3 cameraPosition) {
+
+    glm::vec3 vertex = intersection.intersectionPoint;
+
+    CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
+                                                               intersection.intersectedTriangle.vertices[0].y),
+                                                   CanvasPoint(intersection.intersectedTriangle.vertices[1].x,
+                                                               intersection.intersectedTriangle.vertices[1].y),
+                                                   CanvasPoint(intersection.intersectedTriangle.vertices[2].x,
+                                                               intersection.intersectedTriangle.vertices[2].y));
+
+    glm::vec3 lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
+
+    glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
+    glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
+    glm::vec3 normalV2 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[2]);
+
+    glm::vec3 targetNormal = lambdas[0]*normalV0 + lambdas[1]*normalV1 + lambdas[2]*normalV2;
+
+
+
+    return lightParam(lightSource, cameraPosition, vertex, model_triangles, targetNormal, true);
+}
 
 void rayTracingRender(DrawingWindow &window,
                       const std::vector<ModelTriangle>& model_triangles,
@@ -516,33 +548,22 @@ void rayTracingRender(DrawingWindow &window,
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
+            float light_param;
+            if (shading == Flat) light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection.intersectionPoint,
+                                                               model_triangles, rayTriangleIntersection.intersectedTriangle.normal,
+                                                               true);
+            else if (shading == Gourand) light_param = gouraudLight(model_triangles, rayTriangleIntersection,
+                                                                         lightSource, cameraPosition);
+            else if (shading == Phong) light_param = phongLight(model_triangles, rayTriangleIntersection,
+                                                                     lightSource, cameraPosition);
 
-            glm::vec3 fromLightDirection = glm::normalize(rayTriangleIntersection.intersectionPoint - lightSource);
+            Colour targetColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
+                                         float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
+                                         float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
+            );
 
-            RayTriangleIntersection lightIntersection =
-                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
-
-            if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
-
-//                auto light_param = calculateInterpolatingNormal(model_triangles, rayTriangleIntersection,
-//                                                                      lightSource, cameraPosition);
-
-                auto light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection, rayTriangleIntersection.intersectedTriangle.normal);
-
-                Colour targetColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
-                                                );
-                window.setPixelColour(std::size_t (u), std::size_t (v),
-                                      colour_uint32(targetColour));
-            } /*else {
-                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * 0.2,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * 0.2,
-                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * 0.2
-                );
-                window.setPixelColour(std::size_t (u), std::size_t (v),
-                                      colour_uint32(proximityColour));
-            }*/
+            window.setPixelColour(std::size_t (u), std::size_t (v),
+                                  colour_uint32(targetColour));
         }
     }
 
@@ -690,6 +711,10 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_b) *lightY -= 0.1;
         else if (event.key.keysym.sym == SDLK_h) *lightZ += 0.1;
         else if (event.key.keysym.sym == SDLK_n) *lightZ -= 0.1;
+        else if (event.key.keysym.sym == SDLK_1) shading = Flat;
+        else if (event.key.keysym.sym == SDLK_2) shading = Gourand;
+        else if (event.key.keysym.sym == SDLK_3) shading = Phong;
+
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
