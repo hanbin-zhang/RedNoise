@@ -467,7 +467,7 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                                               vertex, 16.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)), 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -475,15 +475,27 @@ float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
                    glm::vec3 lightSource, glm::vec3 cameraPosition) {
 
     glm::vec3 vertex = intersection.intersectionPoint;
+    glm::vec3 lambdas;
+    if (intersection.intersectedTriangle.vertices[0].x == intersection.intersectedTriangle.vertices[1].x &&
+        intersection.intersectedTriangle.vertices[0].x == intersection.intersectedTriangle.vertices[2].x &&
+            intersection.intersectedTriangle.vertices[1].x == intersection.intersectedTriangle.vertices[2].x) {
+        CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].y,
+                                                                   intersection.intersectedTriangle.vertices[0].z),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[1].y,
+                                                                   intersection.intersectedTriangle.vertices[1].z),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[2].y,
+                                                                   intersection.intersectedTriangle.vertices[2].z));
+        lambdas = barycentricParams(canvasTriangle,vertex[1], vertex[2]);
+    } else {
+        CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
+                                                                   intersection.intersectedTriangle.vertices[0].y),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[1].x,
+                                                                   intersection.intersectedTriangle.vertices[1].y),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[2].x,
+                                                                   intersection.intersectedTriangle.vertices[2].y));
+        lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
 
-    CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
-                                                               intersection.intersectedTriangle.vertices[0].y),
-                                                   CanvasPoint(intersection.intersectedTriangle.vertices[1].x,
-                                                               intersection.intersectedTriangle.vertices[1].y),
-                                                   CanvasPoint(intersection.intersectedTriangle.vertices[2].x,
-                                                               intersection.intersectedTriangle.vertices[2].y));
-
-    glm::vec3 lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
+    }
 
     glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
     glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
@@ -500,11 +512,11 @@ float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
     if (intersection.intersectedTriangle.colour.red == 255 &&
             intersection.intersectedTriangle.colour.green == 255 &&
             intersection.intersectedTriangle.colour.blue == 0 ) {
-        std::cout << lambdas[0] << ","<< lambdas[1]<<"," << lambdas[2]<< std::endl;
-        std::cout << intersection.intersectedTriangle << std::endl;
-        CanvasTriangle m_tria = canvasTriangle;
-        std::cout << canvasTriangle << std::endl;
-        std::cout << (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y)<< std::endl;
+//        std::cout << lambdas[0] << ","<< lambdas[1]<<"," << lambdas[2]<< std::endl;
+//        std::cout << intersection.intersectedTriangle << std::endl;
+//        CanvasTriangle m_tria = canvasTriangle;
+//        std::cout << canvasTriangle << std::endl;
+//        std::cout << (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y)<< std::endl;
     }
     return glm::clamp<float>((lightV0*lambdas[0] + lightV1*lambdas[1] + lightV2*lambdas[2]), 0.0, 1.0);
 }
@@ -776,7 +788,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 1.0);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
