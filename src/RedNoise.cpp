@@ -105,6 +105,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
             }
             current_triangle.normal = glm::normalize(glm::cross((current_triangle.vertices[1] - current_triangle.vertices[0]),
                                                  (current_triangle.vertices[2] - current_triangle.vertices[0])));
+
             triangles.push_back(current_triangle);
         }
     }
@@ -496,8 +497,16 @@ float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
     float lightV2 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[2],
                                model_triangles, normalV2);
 
-
-    return glm::clamp<float>(lightV0*lambdas[0] + lightV1*lambdas[1] + lightV2*lambdas[2], 0.0, 1.0);
+    if (intersection.intersectedTriangle.colour.red == 255 &&
+            intersection.intersectedTriangle.colour.green == 255 &&
+            intersection.intersectedTriangle.colour.blue == 0 ) {
+        std::cout << lambdas[0] << ","<< lambdas[1]<<"," << lambdas[2]<< std::endl;
+        std::cout << intersection.intersectedTriangle << std::endl;
+        CanvasTriangle m_tria = canvasTriangle;
+        std::cout << canvasTriangle << std::endl;
+        std::cout << (m_tria.v1().y - m_tria.v2().y) * (m_tria.v0().x - m_tria.v2().x) + (m_tria.v2().x - m_tria.v1().x) * (m_tria.v0().y - m_tria.v2().y)<< std::endl;
+    }
+    return glm::clamp<float>((lightV0*lambdas[0] + lightV1*lambdas[1] + lightV2*lambdas[2]), 0.0, 1.0);
 }
 
 float phongLight(const std::vector<ModelTriangle>& model_triangles,
@@ -552,6 +561,13 @@ void rayTracingRender(DrawingWindow &window,
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
+
+//            if (rayTriangleIntersection.intersectedTriangle.colour.red == 0,
+//                    rayTriangleIntersection.intersectedTriangle.colour.green == 255,
+//                    rayTriangleIntersection.intersectedTriangle.colour.blue == 255) {
+//                rayTriangleIntersection.
+//            }
+//
             float light_param;
             if (shading == Flat) light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection.intersectionPoint,
                                                                model_triangles, rayTriangleIntersection.intersectedTriangle.normal);
@@ -760,7 +776,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 1.0);
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
