@@ -460,8 +460,7 @@ float specularParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 t
 }
 
 float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vertex,
-                 const std::vector<ModelTriangle>& model_triangles, glm::vec3 targetNormal, bool giveNormal) {
-    if (!giveNormal) targetNormal = calculateVertexNormal(model_triangles, vertex);
+                 const std::vector<ModelTriangle>& model_triangles, glm::vec3 targetNormal) {
 
     float proximityParam = proximityParameter(lightSource,
                                               vertex, 16.0);
@@ -485,12 +484,17 @@ float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
 
     glm::vec3 lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
 
+    glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
+    glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
+    glm::vec3 normalV2 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[2]);
+
+
     float lightV0 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[0],
-                               model_triangles, glm::vec3{0, 0, 0},false);
+                               model_triangles, normalV0);
     float lightV1 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[1],
-                               model_triangles, glm::vec3{0, 0, 0},false);
+                               model_triangles, normalV1);
     float lightV2 = lightParam(lightSource, cameraPosition, intersection.intersectedTriangle.vertices[2],
-                               model_triangles, glm::vec3{0, 0, 0},false);
+                               model_triangles, normalV2);
 
 
     return glm::clamp<float>(lightV0*lambdas[0] + lightV1*lambdas[1] + lightV2*lambdas[2], 0.0, 1.0);
@@ -519,7 +523,7 @@ float phongLight(const std::vector<ModelTriangle>& model_triangles,
 
 
 
-    return lightParam(lightSource, cameraPosition, vertex, model_triangles, targetNormal, true);
+    return lightParam(lightSource, cameraPosition, vertex, model_triangles, targetNormal);
 }
 
 void rayTracingRender(DrawingWindow &window,
@@ -550,8 +554,7 @@ void rayTracingRender(DrawingWindow &window,
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
             float light_param;
             if (shading == Flat) light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection.intersectionPoint,
-                                                               model_triangles, rayTriangleIntersection.intersectedTriangle.normal,
-                                                               true);
+                                                               model_triangles, rayTriangleIntersection.intersectedTriangle.normal);
             else if (shading == Gourand) light_param = gouraudLight(model_triangles, rayTriangleIntersection,
                                                                          lightSource, cameraPosition);
             else if (shading == Phong) light_param = phongLight(model_triangles, rayTriangleIntersection,
