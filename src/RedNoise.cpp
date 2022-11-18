@@ -96,8 +96,8 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
-            current_triangle.colour = Colour(255, 0, 0);
-            //current_triangle.colour = current_colour;
+            //`current_triangle.colour = Colour(255, 0, 0);
+            current_triangle.colour = current_colour;
             for (int i = 1; i < int(facets_string.size()); ++i) {
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
 
@@ -560,13 +560,28 @@ void rayTracingRender(DrawingWindow &window,
             else if (shading == Phong) light_param = phongLight(model_triangles, rayTriangleIntersection,
                                                                      lightSource, cameraPosition);
 
-            Colour targetColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
-                                         float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
-                                         float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
-            );
+            glm::vec3 fromLightDirection = glm::normalize(rayTriangleIntersection.intersectionPoint - lightSource);
 
-            window.setPixelColour(std::size_t (u), std::size_t (v),
-                                  colour_uint32(targetColour));
+            RayTriangleIntersection lightIntersection =
+                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
+
+            if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
+
+                Colour targetColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * light_param,
+                                             float (rayTriangleIntersection.intersectedTriangle.colour.green) * light_param,
+                                             float (rayTriangleIntersection.intersectedTriangle.colour.blue) * light_param
+                );
+
+                window.setPixelColour(std::size_t (u), std::size_t (v),
+                                      colour_uint32(targetColour));
+            } else {
+                Colour proximityColour = Colour(float (rayTriangleIntersection.intersectedTriangle.colour.red) * 0.1,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.green) * 0.1,
+                                                float (rayTriangleIntersection.intersectedTriangle.colour.blue) * 0.1
+                );
+                window.setPixelColour(std::size_t (u), std::size_t (v),
+                                      colour_uint32(proximityColour));
+            }
         }
     }
 
@@ -745,8 +760,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("sphere.obj", "cornell-box.mtl", 0.35);
-    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.5, 3.0);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
     float y_rotate_radian = 0;
