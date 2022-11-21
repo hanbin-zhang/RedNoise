@@ -20,7 +20,7 @@
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
-enum shadingType {Flat, Gourand, Phong};
+enum shadingType {Flat, Gourand, Phong, Nicht};
 int shading = Flat;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
@@ -467,7 +467,7 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                                               vertex, 16.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)), 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 1024)), 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -527,14 +527,30 @@ float phongLight(const std::vector<ModelTriangle>& model_triangles,
 
     glm::vec3 vertex = intersection.intersectionPoint;
 
-    CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
-                                                               intersection.intersectedTriangle.vertices[0].y),
-                                                   CanvasPoint(intersection.intersectedTriangle.vertices[1].x,
-                                                               intersection.intersectedTriangle.vertices[1].y),
-                                                   CanvasPoint(intersection.intersectedTriangle.vertices[2].x,
-                                                               intersection.intersectedTriangle.vertices[2].y));
+    glm::vec3 lambdas;
+    if (intersection.intersectedTriangle.vertices[0].x == intersection.intersectedTriangle.vertices[1].x &&
+        intersection.intersectedTriangle.vertices[0].x == intersection.intersectedTriangle.vertices[2].x &&
+        intersection.intersectedTriangle.vertices[1].x == intersection.intersectedTriangle.vertices[2].x) {
+        CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].y,
+                                                                   intersection.intersectedTriangle.vertices[0].z),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[1].y,
+                                                                   intersection.intersectedTriangle.vertices[1].z),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[2].y,
+                                                                   intersection.intersectedTriangle.vertices[2].z));
+        lambdas = barycentricParams(canvasTriangle,vertex[1], vertex[2]);
+    } else if (intersection.intersectedTriangle.vertices[0].z == intersection.intersectedTriangle.vertices[1].x &&
+               intersection.intersectedTriangle.vertices[0].z == intersection.intersectedTriangle.vertices[2].z &&
+               intersection.intersectedTriangle.vertices[1].z == intersection.intersectedTriangle.vertices[2].z
+            ) {
+        CanvasTriangle canvasTriangle = CanvasTriangle(CanvasPoint(intersection.intersectedTriangle.vertices[0].x,
+                                                                   intersection.intersectedTriangle.vertices[0].y),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[1].x,
+                                                                   intersection.intersectedTriangle.vertices[1].y),
+                                                       CanvasPoint(intersection.intersectedTriangle.vertices[2].x,
+                                                                   intersection.intersectedTriangle.vertices[2].y));
+        lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
 
-    glm::vec3 lambdas = barycentricParams(canvasTriangle,vertex[0], vertex[1]);
+    }
 
     glm::vec3 normalV0 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[0]);
     glm::vec3 normalV1 = calculateVertexNormal(model_triangles, intersection.intersectedTriangle.vertices[1]);
@@ -555,13 +571,13 @@ void rayTracingRender(DrawingWindow &window,
                       float orbiting_radian,
                       glm::vec3 lightSource
                       ) {
-//    glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
-//                           0, 1, 0,
-//                           -sin(orbiting_radian), 0, cos(orbiting_radian)};
-//
-//    cameraPosition = orbiting*cameraPosition;
+    glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
+                           0, 1, 0,
+                           -sin(orbiting_radian), 0, cos(orbiting_radian)};
 
-   // glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
+    cameraPosition = orbiting*cameraPosition;
+
+    glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
 
     for (int u = 0; u < WIDTH; ++u) {
         float x = (float (u) - float (WIDTH)/2) / scaling / focalLength * (cameraPosition.z-focalLength) ;
@@ -569,7 +585,7 @@ void rayTracingRender(DrawingWindow &window,
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling / focalLength * (cameraPosition.z-focalLength);
             glm::vec3 image_plane_vertex = glm::vec3 {x+cameraPosition.x, y+cameraPosition.y, cameraPosition.z-focalLength};
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
-            //imagePlaneDirection = glm::normalize(glm::inverse(camera_orbit_orientation) * imagePlaneDirection  );
+            imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
 
             RayTriangleIntersection rayTriangleIntersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
@@ -587,6 +603,7 @@ void rayTracingRender(DrawingWindow &window,
                                                                          lightSource, cameraPosition);
             else if (shading == Phong) light_param = phongLight(model_triangles, rayTriangleIntersection,
                                                                      lightSource, cameraPosition);
+            else if (shading == Nicht) light_param = 1;
 
             glm::vec3 fromLightDirection = glm::normalize(rayTriangleIntersection.intersectionPoint - lightSource);
 
@@ -760,6 +777,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_1) shading = Flat;
         else if (event.key.keysym.sym == SDLK_2) shading = Gourand;
         else if (event.key.keysym.sym == SDLK_3) shading = Phong;
+        else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
