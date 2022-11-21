@@ -726,9 +726,9 @@ glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
 }
 
 glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
-    glm::mat3x3 sdl_matrix = glm::mat3x3(triangle.v0().x, triangle.v1().x, triangle.v2().x,
-                                         triangle.v0().y, triangle.v1().y, triangle.v2().y,
-                                         1.0, 1.0, 1.0);
+    glm::mat3x3 sdl_matrix = glm::mat3(glm::vec3 {triangle.v0().x, triangle.v1().y, 1.0},
+                                       glm::vec3 {triangle.v1().x, triangle.v1().y, 1.0},
+                                       glm::vec3 { triangle.v2().x, triangle.v2().y, 1.0});
     glm::mat3x3 texture_matrix = glm::mat3x3(triangle.v0().texturePoint.x, triangle.v1().texturePoint.x, triangle.v2().texturePoint.x,
                                              triangle.v0().texturePoint.y, triangle.v1().texturePoint.y, triangle.v2().texturePoint.y,
                                              1.0, 1.0, 1.0);
