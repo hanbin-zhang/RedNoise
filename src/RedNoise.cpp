@@ -620,6 +620,7 @@ void rayTracingRender(DrawingWindow &window,
     for (int u = 0; u < WIDTH; ++u) {
         float x = (float (u) - float (WIDTH)/2) / scaling / focalLength * (cameraPosition.z-focalLength) ;
         for (int v = 0; v < HEIGHT ; ++v) {
+            std::cout << "sahdsh" << std::endl;
             float y = -1 * (float (v)- float (HEIGHT)/2) / scaling / focalLength * (cameraPosition.z-focalLength);
             glm::vec3 image_plane_vertex = glm::vec3 {x+cameraPosition.x, y+cameraPosition.y, cameraPosition.z-focalLength};
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
@@ -655,19 +656,19 @@ void rayTracingRender(DrawingWindow &window,
                                       colour_uint32(targetColour));
             } else {
 
-                float softShadowParam = light_param * 10.0f * softShadow(lightSource,
-                                                       15,
-                                                       0.05,
-                                                       rayTriangleIntersection,
-                                                       model_triangles);
-
-
-                    Colour proximityColour = Colour(float (colour.red) * softShadowParam,
-                                                    float (colour.green) * softShadowParam,
-                                                    float (colour.blue) * softShadowParam
-                    );
-                    window.setPixelColour(std::size_t (u), std::size_t (v),
-                                          colour_uint32(proximityColour));
+//                float softShadowParam = light_param * 10.0f * softShadow(lightSource,
+//                                                       15,
+//                                                       0.05,
+//                                                       rayTriangleIntersection,
+//                                                       model_triangles);
+//
+//
+//                    Colour proximityColour = Colour(float (colour.red) * softShadowParam,
+//                                                    float (colour.green) * softShadowParam,
+//                                                    float (colour.blue) * softShadowParam
+//                    );
+//                    window.setPixelColour(std::size_t (u), std::size_t (v),
+//                                          colour_uint32(proximityColour));
 //                if (isSoftShadow) {
 //                    float softShadowParam = softShadow(lightSource,
 //                                                       2.5,
@@ -880,7 +881,7 @@ int main(int argc, char *argv[]) {
     int render_mode = 0;
     float lightX = 0.0;
     float lightY = 0.5;
-    float lightZ = 0.0;
+    float lightZ = 0.5;
 
 
     while (true) {
