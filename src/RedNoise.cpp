@@ -54,6 +54,21 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
     return resultV3;
 }
 
+glm::mat3x3 calculate_affine_mtx(const ModelTriangle& triangle) {
+    glm::mat3x3 sdl_matrix = glm::mat3(
+            glm::vec3 {triangle.vertices[0].x, triangle.vertices[0].y, 1.0f},
+            glm::vec3 {triangle.vertices[1].x, triangle.vertices[1].y, 1.0f},
+            glm::vec3 { triangle.vertices[2].x, triangle.vertices[2].y, 1.0f});
+    glm::mat3x3 texture_matrix = glm::mat3(
+            glm::vec3 {triangle.texturePoints[0].x, triangle.texturePoints[0].y, 1.0f},
+            glm::vec3 {triangle.texturePoints[1].x, triangle.texturePoints[1].y, 1.0f},
+            glm::vec3 {triangle.texturePoints[2].x, triangle.texturePoints[2].y, 1.0f});
+
+    glm::mat3x3 result = sdl_matrix * glm::inverse(texture_matrix);
+
+    return result;
+}
+
 std::map<std::string, Colour> read_colour_palette(const std::string& file_name) {
     std::string current_line;
     std::ifstream MyReadFile(file_name);
@@ -463,7 +478,7 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                                               vertex, 32.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)), 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)) + 0.2f, 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -585,9 +600,14 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         intersection = getClosestIntersection(intersection.intersectionPoint,
                                               reflection,
                                               triangles);
-    } else if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+    }/* else if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+        glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle);
+        glm::vec3 texturePoint = glm::inverse(affineMat) * intersection.intersectionPoint;
 
-    }
+        TextureMap textureMap = TextureMap(textureFilename[intersection.intersectedTriangle.colour.name]);
+        textureMap.pixels[size_t (float (textureMap.width)*texturePoint.y-
+        (float (textureMap.width)-texturePoint.x))];
+    }*/
 
     return intersection;
 }
@@ -668,9 +688,9 @@ void rayTracingRender(DrawingWindow &window,
 
             if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
 
-                Colour targetColour = Colour(glm::clamp<float>((colour.red) * (light_param + 0.3f), 0.0, 255.0),
-                                             glm::clamp<float>((colour.green) * (light_param + 0.3f), 0.0, 255.0),
-                                             glm::clamp<float>((colour.blue) * (light_param + 0.3f), 0.0, 255.0)
+                Colour targetColour = Colour(colour.red * (light_param),
+                                             (colour.green) * (light_param),
+                                             (colour.blue) * (light_param)
                 );
 
                 window.setPixelColour(std::size_t(u), std::size_t(v),
@@ -819,43 +839,30 @@ glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
     return reverse_matrix;
 }
 
-glm::mat3x3 calculate_affine_mtx(CanvasTriangle triangle) {
-    glm::mat3x3 sdl_matrix = glm::mat3(glm::vec3 {triangle.v0().x, triangle.v1().y, 1.0},
-                                       glm::vec3 {triangle.v1().x, triangle.v1().y, 1.0},
-                                       glm::vec3 { triangle.v2().x, triangle.v2().y, 1.0});
-    glm::mat3x3 texture_matrix = glm::mat3x3(triangle.v0().texturePoint.x, triangle.v1().texturePoint.x, triangle.v2().texturePoint.x,
-                                             triangle.v0().texturePoint.y, triangle.v1().texturePoint.y, triangle.v2().texturePoint.y,
-                                             1.0, 1.0, 1.0);
-
-    glm::mat3x3 result = reverse_mtx(texture_matrix) * sdl_matrix;
-
-    return result;
-}
-
-void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
-    std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
-
-     if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
-     if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
-     if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
-
-
-    CanvasPoint midpoint = find_mid_point(vertices);
-    std::array<CanvasPoint, 3> texture_vertices{
-        CanvasPoint(vertices[0].texturePoint.x, vertices[0].texturePoint.y),
-        CanvasPoint(vertices[1].texturePoint.x, vertices[1].texturePoint.y),
-        CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
-    };
-    CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
-
-
-    midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
-
-    glm::mat3x3 affineMtx = calculate_affine_mtx(canvasTriangle);
-    fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap, affineMtx);
-    fill_half_texture_triangle(window,  midpoint, vertices[1], vertices[2], vertices[2],textureMap, affineMtx);
-    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
-}
+//void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
+//    std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
+//
+//     if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
+//     if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
+//     if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
+//
+//
+//    CanvasPoint midpoint = find_mid_point(vertices);
+//    std::array<CanvasPoint, 3> texture_vertices{
+//        CanvasPoint(vertices[0].texturePoint.x, vertices[0].texturePoint.y),
+//        CanvasPoint(vertices[1].texturePoint.x, vertices[1].texturePoint.y),
+//        CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
+//    };
+//    CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
+//
+//
+//    midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
+//
+//    glm::mat3x3 affineMtx = calculate_affine_mtx(canvasTriangle);
+//    fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap, affineMtx);
+//    fill_half_texture_triangle(window,  midpoint, vertices[1], vertices[2], vertices[2],textureMap, affineMtx);
+//    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
+//}
 
 void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
                  float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
