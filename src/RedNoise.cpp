@@ -73,10 +73,6 @@ std::map<std::string, Colour> read_colour_palette(const std::string& file_name) 
             textureFilename[current_colour_string] = split(current_line, ' ')[1];
         }
     }
-    std::cout << textureFilename.begin()->first << std::endl;
-    std::cout << textureFilename.begin()->second << std::endl;
-
-
     return colour_map;
 }
 
@@ -93,7 +89,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
     std::map<std::string, Colour> colour_palette = read_colour_palette(colour_file_name);
 
     while (getline (MyReadFile, current_line)) {
-        if (current_line[0] == 'v') {
+        if (current_line.compare(0, 2, "v ")==0) {
             //put a vertex on to the list
             std::vector<std::string> vertices_string = split(current_line, ' ');
             vertices.emplace_back(std::stof(vertices_string[1]) * scaling,
@@ -106,7 +102,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
                                               std::stof(vertices_string[2])));
         } else if (current_line.compare(0, 6, "usemtl")==0) {
             current_colour = colour_palette[split(current_line, ' ')[1]];
-        } else if (current_line[0] == 'f') {
+        } else if (current_line.compare(0, 1, "f")==0) {
             // add a facet triangle
             std::vector<std::string> facets_string = split(current_line, ' ');
             ModelTriangle current_triangle;
@@ -117,11 +113,9 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
 
                 current_triangle.vertices[i-1] = vertices[std::stoi(facets_vertex_string[0])-1];
 
-//                if (facets_vertex_string.size() > 1) {
-//                    std::cout << facets_vertex_string[0] << std::endl;
-//                    std::cout << facets_vertex_string[1] << std::endl;
-//                    current_triangle.texturePoints[i-1] = textureVertices[std::stoi(facets_vertex_string[1])-1];
-//                }
+                if (facets_vertex_string.size() > 2) {
+                    current_triangle.texturePoints[i-1] = textureVertices[std::stoi(facets_vertex_string[1])-1];
+                }
             }
             current_triangle.normal = glm::normalize(glm::cross((current_triangle.vertices[1] - current_triangle.vertices[0]),
                                                  (current_triangle.vertices[2] - current_triangle.vertices[0])));
@@ -583,9 +577,7 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         }
     }
 
-    if (intersection.intersectedTriangle.colour.red == 255 &&
-        intersection.intersectedTriangle.colour.green == 0 &&
-        intersection.intersectedTriangle.colour.blue == 255) {
+    if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                         triangles,
                         camera_position,
@@ -593,6 +585,8 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         intersection = getClosestIntersection(intersection.intersectionPoint,
                                               reflection,
                                               triangles);
+    } else if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+
     }
 
     return intersection;
@@ -919,7 +913,6 @@ int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<ModelTriangle> model_triangles = read_OBJ_files("../textured-cornell-box.obj", "../textured-cornell-box.mtl", 0.35);
-
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
@@ -930,7 +923,6 @@ int main(int argc, char *argv[]) {
     float lightX = 0.0;
     float lightY = 0.5;
     float lightZ = 0.3;
-
 
     while (true) {
         glm::vec3 lightSource = {lightX, lightY, lightZ};
