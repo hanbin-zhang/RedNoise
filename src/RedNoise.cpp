@@ -13,6 +13,7 @@
 #include "glm/mat3x3.hpp"
 #include "RayTriangleIntersection.h"
 #include "ModelTriangle.h"
+#include "glm/gtx/string_cast.hpp"
 
 #define WIDTH 1280
 #define HEIGHT 960
@@ -54,18 +55,17 @@ std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 t
     return resultV3;
 }
 
-glm::mat3x3 calculate_affine_mtx(const ModelTriangle& triangle) {
-    glm::mat3x3 sdl_matrix = glm::mat3(
+glm::mat3 calculate_affine_mtx(const ModelTriangle& triangle, int textureWidth, int  textureHeight) {
+    glm::mat3 sdl_matrix = glm::mat3(
             glm::vec3 {triangle.vertices[0].x, triangle.vertices[0].y, triangle.vertices[0].z},
             glm::vec3 {triangle.vertices[1].x, triangle.vertices[1].y, triangle.vertices[1].z},
             glm::vec3 {triangle.vertices[2].x, triangle.vertices[2].y, triangle.vertices[2].z});
-    glm::mat3x3 texture_matrix = glm::mat3(
-            glm::vec3 {triangle.texturePoints[0].x, triangle.texturePoints[0].y, 1.0f},
-            glm::vec3 {triangle.texturePoints[1].x, triangle.texturePoints[1].y, 1.0f},
-            glm::vec3 {triangle.texturePoints[2].x, triangle.texturePoints[2].y, 1.0f});
+    glm::mat3 texture_matrix = glm::mat3(
+            glm::vec3 {round(triangle.texturePoints[0].x*textureWidth), round(triangle.texturePoints[0].y*textureHeight), 1.0f},
+            glm::vec3 {round(triangle.texturePoints[1].x*textureWidth), round(triangle.texturePoints[1].y*textureHeight), 1.0f},
+            glm::vec3 {round(triangle.texturePoints[2].x*textureWidth), round(triangle.texturePoints[2].y*textureHeight), 1.0f});
 
-    glm::mat3x3 result = sdl_matrix * glm::inverse(texture_matrix);
-
+    glm::mat3 result = texture_matrix * glm::inverse(sdl_matrix);
     return result;
 }
 
@@ -128,7 +128,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
 
                 current_triangle.vertices[i-1] = vertices[std::stoi(facets_vertex_string[0])-1];
 
-                if (facets_vertex_string.size() > 2) {
+                if (textureFilename.count(current_colour.name)) {
                     current_triangle.texturePoints[i-1] = textureVertices[std::stoi(facets_vertex_string[1])-1];
                 }
             }
@@ -600,21 +600,7 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         intersection = getClosestIntersection(intersection.intersectionPoint,
                                               reflection,
                                               triangles);
-    } else if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
-        glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle);
-        glm::vec3 texturePoint = glm::inverse(affineMat) * intersection.intersectionPoint;
-        TextureMap textureMap = TextureMap("../" + textureFilename[intersection.intersectedTriangle.colour.name]);
-        uint32_t colourInt = textureMap.pixels[size_t (float (textureMap.width)*texturePoint.y-
-        (float (textureMap.width)-texturePoint.x))];
-
-        unsigned  mask;
-        mask = (1 << 8) - 1;
-        uint32_t red = (colourInt >> 16) & mask;
-        uint32_t green = (colourInt >> 8) & mask;
-        uint32_t blue = (colourInt) & mask;
-        intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
     }
-
     return intersection;
 }
 
@@ -660,6 +646,7 @@ void rayTracingRender(DrawingWindow &window,
     //cameraPosition = orbiting*cameraPosition;
 
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
+    TextureMap textureMap = TextureMap("../" + textureFilename["Cobbles"]);
 
     for (int u = 0; u < WIDTH; ++u) {
         float x = (float(u) - float(WIDTH) / 2) / scaling / focalLength * (cameraPosition.z - focalLength);
@@ -670,29 +657,43 @@ void rayTracingRender(DrawingWindow &window,
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
             //imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
             //imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
-            RayTriangleIntersection rayTriangleIntersection =
+            RayTriangleIntersection intersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
 
             float light_param;
             if (shading == Flat)
-                light_param = lightParam(lightSource, cameraPosition, rayTriangleIntersection.intersectionPoint,
-                                         model_triangles, rayTriangleIntersection.intersectedTriangle.normal);
+                light_param = lightParam(lightSource, cameraPosition, intersection.intersectionPoint,
+                                         model_triangles, intersection.intersectedTriangle.normal);
             else if (shading == Gourand)
-                light_param = gouraudLight(model_triangles, rayTriangleIntersection,
+                light_param = gouraudLight(model_triangles, intersection,
                                            lightSource, cameraPosition);
             else if (shading == Phong)
-                light_param = phongLight(model_triangles, rayTriangleIntersection,
+                light_param = phongLight(model_triangles, intersection,
                                          lightSource, cameraPosition);
             else if (shading == Nicht) light_param = 1;
 
-            glm::vec3 fromLightDirection = glm::normalize(rayTriangleIntersection.intersectionPoint - lightSource);
+            glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
             RayTriangleIntersection lightIntersection =
                     getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
-            Colour colour = rayTriangleIntersection.intersectedTriangle.colour;
+            if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+                glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
+                glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
 
-            if (rayTriangleIntersection.triangleIndex == lightIntersection.triangleIndex) {
+                uint32_t colourInt = textureMap.pixels[texturePoint[0] + texturePoint[1] * textureMap.width];
+
+                unsigned  mask;
+                mask = 0xff;
+                uint32_t red = (colourInt >> 16) & mask;
+                uint32_t green = (colourInt >> 8) & mask;
+                uint32_t blue = (colourInt) & mask;
+                intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
+            }
+
+            Colour colour = intersection.intersectedTriangle.colour;
+
+            if (intersection.triangleIndex == lightIntersection.triangleIndex) {
 
                 Colour targetColour = Colour(colour.red * (light_param),
                                              (colour.green) * (light_param),
@@ -705,9 +706,9 @@ void rayTracingRender(DrawingWindow &window,
 
                 if (isSoftShadow) {
                     float proximityParam = proximityParameter(lightSource,
-                                                              rayTriangleIntersection.intersectionPoint, 4.0);
-                    float aoIParam = angleOfIncidentParam(lightSource, rayTriangleIntersection.intersectionPoint,
-                                                          rayTriangleIntersection.intersectedTriangle.normal);
+                                                              intersection.intersectionPoint, 4.0);
+                    float aoIParam = angleOfIncidentParam(lightSource, intersection.intersectionPoint,
+                                                          intersection.intersectedTriangle.normal);
                     auto param =
                             glm::clamp<float>(proximityParam * aoIParam, 0.0, 1.0);
                     Colour shadowColour = Colour(colour.red * param,
@@ -717,7 +718,7 @@ void rayTracingRender(DrawingWindow &window,
                     float softShadowParam = softShadow(lightSource,
                                                        5,
                                                        0.05,
-                                                       rayTriangleIntersection,
+                                                       intersection,
                                                        model_triangles);
 
                     Colour proximityColour = Colour(
@@ -738,7 +739,7 @@ void rayTracingRender(DrawingWindow &window,
                         float softShadowParam = softShadow(lightSource,
                                                            2.5,
                                                            0.1,
-                                                           rayTriangleIntersection,
+                                                           intersection,
                                                            model_triangles);
                         softShadowParam *= 0.2;
                         Colour proximityColour = Colour(float(colour.red) * softShadowParam,
