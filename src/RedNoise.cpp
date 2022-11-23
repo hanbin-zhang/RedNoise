@@ -681,7 +681,8 @@ void rayTracingRender(DrawingWindow &window,
                 glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
                 glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
 
-                uint32_t colourInt = textureMap.pixels[texturePoint[0] + texturePoint[1] * textureMap.width];
+                uint32_t colourInt = textureMap.pixels[round(texturePoint[0]) +
+                        round(texturePoint[1]) * textureMap.width];
 
                 unsigned  mask;
                 mask = 0xff;
