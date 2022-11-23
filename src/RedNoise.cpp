@@ -23,6 +23,8 @@ Colour colour_buffer[WIDTH][HEIGHT];
 enum shadingType {Flat, Gourand, Phong, Nicht};
 int shading = Flat;
 bool isSoftShadow = false;
+// corresponding texture file name
+std::map<std::string, std::string> textureFilename;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -67,8 +69,14 @@ std::map<std::string, Colour> read_colour_palette(const std::string& file_name) 
                                                        int(std::stof(rgb_values[1])*255.0),
                                                        int(std::stof(rgb_values[2])*255.0),
                                                        int(std::stof(rgb_values[3])*255.0));
+        } else if (current_line.compare(0, 6, "map_Kd")==0) {
+            textureFilename[current_colour_string] = split(current_line, ' ')[1];
         }
     }
+    std::cout << textureFilename.begin()->first << std::endl;
+    std::cout << textureFilename.begin()->second << std::endl;
+
+
     return colour_map;
 }
 
@@ -79,6 +87,7 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
     std::string current_line;
     std::ifstream MyReadFile(file_name);
     std::vector<glm::vec3> vertices;
+    std::vector<TexturePoint> textureVertices;
     std::vector<ModelTriangle> triangles;
     Colour current_colour;
     std::map<std::string, Colour> colour_palette = read_colour_palette(colour_file_name);
@@ -91,6 +100,10 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
                                   std::stof(vertices_string[2]) * scaling,
                                   std::stof(vertices_string[3]) * scaling);
 
+        } else if (current_line.compare(0, 2, "vt")==0) {
+            std::vector<std::string> vertices_string = split(current_line, ' ');
+            textureVertices.emplace_back(TexturePoint(std::stof(vertices_string[1]),
+                                              std::stof(vertices_string[2])));
         } else if (current_line.compare(0, 6, "usemtl")==0) {
             current_colour = colour_palette[split(current_line, ' ')[1]];
         } else if (current_line[0] == 'f') {
@@ -103,6 +116,12 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
                 std::vector<std::string> facets_vertex_string = split(facets_string[i], '/');
 
                 current_triangle.vertices[i-1] = vertices[std::stoi(facets_vertex_string[0])-1];
+
+//                if (facets_vertex_string.size() > 1) {
+//                    std::cout << facets_vertex_string[0] << std::endl;
+//                    std::cout << facets_vertex_string[1] << std::endl;
+//                    current_triangle.texturePoints[i-1] = textureVertices[std::stoi(facets_vertex_string[1])-1];
+//                }
             }
             current_triangle.normal = glm::normalize(glm::cross((current_triangle.vertices[1] - current_triangle.vertices[0]),
                                                  (current_triangle.vertices[2] - current_triangle.vertices[0])));
@@ -899,7 +918,14 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("cornell-box.obj", "cornell-box.mtl", 0.35);
+    std::vector<ModelTriangle> model_triangles = read_OBJ_files("../textured-cornell-box.obj", "../textured-cornell-box.mtl", 0.35);
+    for (const auto& triangle : model_triangles) {
+        if (triangle.colour.name == "cobble") {
+            std::cout << triangle << std::endl;
+            exit(0);
+        }
+    }
+
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
