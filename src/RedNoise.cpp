@@ -919,12 +919,6 @@ int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
     std::vector<ModelTriangle> model_triangles = read_OBJ_files("../textured-cornell-box.obj", "../textured-cornell-box.mtl", 0.35);
-    for (const auto& triangle : model_triangles) {
-        if (triangle.colour.name == "cobble") {
-            std::cout << triangle << std::endl;
-            exit(0);
-        }
-    }
 
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
