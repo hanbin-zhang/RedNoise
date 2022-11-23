@@ -411,8 +411,8 @@ void draw(DrawingWindow &window) {
 
 glm::mat3 lookAt(glm::vec3 cameraPosition) {
     glm::vec3 forward = glm::normalize( cameraPosition);
-    glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), forward);
-    glm::vec3 up = glm::cross(forward, right);
+    glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward));
+    glm::vec3 up = glm::normalize(glm::cross(forward, right));
     glm::mat3 camera_orbit_orientation = {right, up, forward};
     return camera_orbit_orientation;
 }
@@ -643,20 +643,20 @@ void rayTracingRender(DrawingWindow &window,
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
 
-    //cameraPosition = orbiting*cameraPosition;
+    cameraPosition = cameraPosition * orbiting;
 
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
     TextureMap textureMap = TextureMap("../" + textureFilename["Cobbles"]);
 
     for (int u = 0; u < WIDTH; ++u) {
-        float x = (float(u) - float(WIDTH) / 2) / scaling / focalLength * (cameraPosition.z - focalLength);
+        float x = (float(u) - float(WIDTH) / 2) / scaling ;
         for (int v = 0; v < HEIGHT; ++v) {
-            float y = -1 * (float(v) - float(HEIGHT) / 2) / scaling / focalLength * (cameraPosition.z - focalLength);
+            float y = -1 * (float(v) - float(HEIGHT) / 2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3{x + cameraPosition.x, y + cameraPosition.y,
                                                      cameraPosition.z - focalLength};
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
             //imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
-            //imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
+            imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
             RayTriangleIntersection intersection =
                     getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
 
