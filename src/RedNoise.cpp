@@ -671,26 +671,31 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
             float cosi = -std::max(-1.f, std::min(1.f, glm::dot(camera_position,
                                                                 N)));
 
-            if (cosi > 0) {
+            if (cosi < 0) {
+
                 std::swap(n1, n2);
             }
+            cosi = fabsf(cosi);
             float eta = n1 / n2;
             float  cost = sqrtf(1 - eta * eta * (1 - cosi * cosi));
 
-            float rs = (n1 * cosi - n2 * cost) / (n1 * cosi + n2 * cost);
-            float rp = (n1 * cost - n2 * cosi) / (n1 * cost + n2 * cosi);
+            float rs = (n2 * cosi - n1 * cost) / (n2 * cosi + n1 * cost);
+            float rp = (n1 * cosi - n2 * cost) / (n1 * cosi + n2 * cost);
             rs = rs * rs;
             rp = rp * rp;
-            float r = (rs + rp )/2.0f;
+            float r = (rs + rp )*0.5f;
             Colour reflecColour = reflectionIntersection.intersectedTriangle.colour;
             Colour refraColour = refractIntersection.intersectedTriangle.colour;
+
+            /*std::cout << reflecColour << std::endl;
+            std::cout << refraColour << std::endl;*/
 
             Colour doubleRcolour = Colour(
                     r*reflecColour.red + (1-r) * refraColour.red,
                     r*reflecColour.green + (1-r) * refraColour.green,
                     r*reflecColour.blue + (1-r) * refraColour.blue
                     );
-            intersection = reflectionIntersection;
+            intersection = refractIntersection;
             intersection.intersectedTriangle.colour = doubleRcolour;
         }
     }
