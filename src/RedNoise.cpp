@@ -25,7 +25,7 @@ enum shadingType {Flat, Gourand, Phong, Nicht};
 int shading = Flat;
 bool isSoftShadow = false;
 // corresponding texture file name
-std::map<std::string, std::string> textureFilename;
+std::map<std::string, TextureMap> textureFilename;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -85,7 +85,8 @@ std::map<std::string, Colour> read_colour_palette(const std::string& file_name) 
                                                        int(std::stof(rgb_values[2])*255.0),
                                                        int(std::stof(rgb_values[3])*255.0));
         } else if (current_line.compare(0, 6, "map_Kd")==0) {
-            textureFilename[current_colour_string] = split(current_line, ' ')[1];
+            textureFilename[current_colour_string] = TextureMap("../" + split(current_line, ' ')[1]);
+
         }
     }
     return colour_map;
@@ -572,8 +573,23 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
     return reflection;
 }
 
+glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
+    float cosi = -std::max(-1.f, std::min(1.f, glm::dot(incident, normal)));
+    float etai = 1, etat = refractive_index;
+    glm::vec3 N = normal;
+    if (cosi < 0) {
+        cosi = -cosi;
+        std::swap(etai, etat);
+        N = -normal;
+    }
+    float eta = etai/etat;
+    float  k = 1-eta*eta*(1-cosi*cosi);
+    return k < 0 ? glm::vec3 {0, 0, 0} : incident*eta + N * (eta * cosi - sqrtf(k));
+}
+
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
-                                               const std::vector<ModelTriangle>& triangles) {
+                                               const std::vector<ModelTriangle>& triangles,
+                                               int recurrent) {
     RayTriangleIntersection intersection;
     auto absolute_distance = float (INT32_MAX-1);
     for (int i = 0; i < int (triangles.size()); ++i) {
@@ -592,14 +608,53 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
         }
     }
 
+    if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+        TextureMap textureMap = textureFilename[intersection.intersectedTriangle.colour.name];
+        glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
+        glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
+
+        uint32_t colourInt = textureMap.pixels[round(texturePoint[0]) +
+                                               round(texturePoint[1]) * textureMap.width];
+
+        unsigned  mask;
+        mask = 0xff;
+        uint32_t red = (colourInt >> 16) & mask;
+        uint32_t green = (colourInt >> 8) & mask;
+        uint32_t blue = (colourInt) & mask;
+        intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
+    }
+
     if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                         triangles,
                         camera_position,
                         intersection);
+        int currentRec = recurrent + 1;
+        if (currentRec > 3)  {
+            intersection.intersectedTriangle.colour = Colour{0, 0, 0};
+            return intersection;
+        }
         intersection = getClosestIntersection(intersection.intersectionPoint,
                                               reflection,
-                                              triangles);
+                                              triangles, recurrent + 1);
+    } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
+        int currentRec = recurrent + 1;
+        if (currentRec > 3)  {
+            intersection.intersectedTriangle.colour = Colour{0, 0, 0};
+            return intersection;
+        }
+        glm::vec3 refractDirection = refract(ray_direction,
+                                    intersection.intersectedTriangle.normal,
+                                    1.4);
+        intersection = getClosestIntersection(intersection.intersectionPoint,
+                                              refractDirection,
+                                              triangles, recurrent + 1);
+        intersection.intersectedTriangle.colour.red =
+                glm::clamp<int>(intersection.intersectedTriangle.colour.red -25, 0, 255);
+        intersection.intersectedTriangle.colour.green =
+                glm::clamp<int>(intersection.intersectedTriangle.colour.green + 25, 0, 255);
+        intersection.intersectedTriangle.colour.blue =
+                glm::clamp<int>(intersection.intersectedTriangle.colour.blue - 25, 0, 255);
     }
     return intersection;
 }
@@ -620,7 +675,7 @@ float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTria
                 glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - oneLight);
 
                 RayTriangleIntersection lightIntersection =
-                        getClosestIntersection(oneLight, fromLightDirection, model_triangles);
+                        getClosestIntersection(oneLight, fromLightDirection, model_triangles, 0);
 
 
                 if (intersection.triangleIndex == lightIntersection.triangleIndex) lightNumber+=1;
@@ -646,7 +701,6 @@ void rayTracingRender(DrawingWindow &window,
     cameraPosition = cameraPosition * orbiting;
 
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
-    TextureMap textureMap = TextureMap("../" + textureFilename["Cobbles"]);
 
     for (int u = 0; u < WIDTH; ++u) {
         float x = (float(u) - float(WIDTH) / 2) / scaling ;
@@ -658,7 +712,7 @@ void rayTracingRender(DrawingWindow &window,
             //imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
             imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
             RayTriangleIntersection intersection =
-                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
+                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles, 0);
 
             float light_param;
             if (shading == Flat)
@@ -675,22 +729,7 @@ void rayTracingRender(DrawingWindow &window,
             glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
             RayTriangleIntersection lightIntersection =
-                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
-
-            if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
-                glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
-                glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
-
-                uint32_t colourInt = textureMap.pixels[round(texturePoint[0]) +
-                        round(texturePoint[1]) * textureMap.width];
-
-                unsigned  mask;
-                mask = 0xff;
-                uint32_t red = (colourInt >> 16) & mask;
-                uint32_t green = (colourInt >> 8) & mask;
-                uint32_t blue = (colourInt) & mask;
-                intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
-            }
+                    getClosestIntersection(lightSource, fromLightDirection, model_triangles, 0);
 
             Colour colour = intersection.intersectedTriangle.colour;
 
@@ -730,12 +769,7 @@ void rayTracingRender(DrawingWindow &window,
                     window.setPixelColour(std::size_t(u), std::size_t(v),
                                           colour_uint32(proximityColour));
                 } else {
-                    Colour proximityColour = Colour(float(colour.red) * 0.2,
-                                                    float(colour.green) * 0.2,
-                                                    float(colour.blue) * 0.2
-                    );
-                    window.setPixelColour(std::size_t(u), std::size_t(v),
-                                          colour_uint32(proximityColour));
+
                     if (isSoftShadow) {
                         float softShadowParam = softShadow(lightSource,
                                                            2.5,
