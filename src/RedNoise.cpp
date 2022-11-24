@@ -584,7 +584,7 @@ glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) 
     }
     float eta = etai/etat;
     float  k = 1-eta*eta*(1-cosi*cosi);
-    return k < 0 ? glm::vec3 {0, 0, 0} : incident*eta + N * (eta * cosi - sqrtf(k));
+    return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident*eta + N * (eta * cosi - sqrtf(k)));
 }
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
@@ -644,18 +644,54 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
                 intersection.intersectedTriangle.colour = Colour{255, 255, 255};
                 return intersection;
             }
+            float n1 = 1, n2 = 1.3;
+
+            glm::vec3 reflection = mirror(intersection.intersectionPoint,
+                                          triangles,
+                                          camera_position,
+                                          intersection);
+
+            RayTriangleIntersection reflectionIntersection
+                    = getClosestIntersection(intersection.intersectionPoint,
+                                             reflection,
+                                             triangles, recurrent + 1);
+
             glm::vec3 refractDirection = refract(ray_direction,
                                                  intersection.intersectedTriangle.normal,
-                                                 1.4);
-            intersection = getClosestIntersection(intersection.intersectionPoint,
+                                                 n2);
+            glm::vec3 refraOrigin = intersection.intersectionPoint;
+            refraOrigin = glm::dot(refractDirection, intersection.intersectedTriangle.normal)
+                    < 0 ? refraOrigin - intersection.intersectedTriangle.normal * 1e-3f : refraOrigin + intersection.intersectedTriangle.normal * 1e-3f;
+            RayTriangleIntersection refractIntersection =
+                    getClosestIntersection(refraOrigin,
                                                   refractDirection,
                                                   triangles, recurrent + 1);
-            intersection.intersectedTriangle.colour.red =
-                    glm::clamp<int>(intersection.intersectedTriangle.colour.red -25, 0, 255);
-            intersection.intersectedTriangle.colour.green =
-                    glm::clamp<int>(intersection.intersectedTriangle.colour.green + 25, 0, 255);
-            intersection.intersectedTriangle.colour.blue =
-                    glm::clamp<int>(intersection.intersectedTriangle.colour.blue - 25, 0, 255);
+
+            glm::vec3 N = intersection.intersectedTriangle.normal;
+            float cosi = -std::max(-1.f, std::min(1.f, glm::dot(camera_position,
+                                                                N)));
+
+            if (cosi > 0) {
+                std::swap(n1, n2);
+            }
+            float eta = n1 / n2;
+            float  cost = sqrtf(1 - eta * eta * (1 - cosi * cosi));
+
+            float rs = (n1 * cosi - n2 * cost) / (n1 * cosi + n2 * cost);
+            float rp = (n1 * cost - n2 * cosi) / (n1 * cost + n2 * cosi);
+            rs = rs * rs;
+            rp = rp * rp;
+            float r = (rs + rp )/2.0f;
+            Colour reflecColour = reflectionIntersection.intersectedTriangle.colour;
+            Colour refraColour = refractIntersection.intersectedTriangle.colour;
+
+            Colour doubleRcolour = Colour(
+                    r*reflecColour.red + (1-r) * refraColour.red,
+                    r*reflecColour.green + (1-r) * refraColour.green,
+                    r*reflecColour.blue + (1-r) * refraColour.blue
+                    );
+            intersection = reflectionIntersection;
+            intersection.intersectedTriangle.colour = doubleRcolour;
         }
     }
 
@@ -732,7 +768,8 @@ void rayTracingRender(DrawingWindow &window,
             glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
             RayTriangleIntersection lightIntersection =
-                    getClosestIntersection(lightSource, fromLightDirection, model_triangles, 0);
+                    getClosestIntersection(lightSource, fromLightDirection, model_triangles,
+                                           0, true);
 
             Colour colour = intersection.intersectedTriangle.colour;
 
@@ -747,7 +784,7 @@ void rayTracingRender(DrawingWindow &window,
                                       colour_uint32(targetColour));
             } else {
                 float shadowPram;
-                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.8;
+                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.6;
                 else shadowPram = 0.2;
                 if (isSoftShadow) {
                     float softShadowParam = softShadow(lightSource,
