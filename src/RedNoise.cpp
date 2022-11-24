@@ -743,54 +743,30 @@ void rayTracingRender(DrawingWindow &window,
                 window.setPixelColour(std::size_t(u), std::size_t(v),
                                       colour_uint32(targetColour));
             } else {
-
+                float shadowPram;
+                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.8;
+                else shadowPram = 0.2;
+                std::cout << lightIntersection.intersectedTriangle.colour.name << std::endl;
                 if (isSoftShadow) {
-                    float proximityParam = proximityParameter(lightSource,
-                                                              intersection.intersectionPoint, 4.0);
-                    float aoIParam = angleOfIncidentParam(lightSource, intersection.intersectionPoint,
-                                                          intersection.intersectedTriangle.normal);
-                    auto param =
-                            glm::clamp<float>(proximityParam * aoIParam, 0.0, 1.0);
-                    Colour shadowColour = Colour(colour.red * param,
-                                                 colour.green * param,
-                                                 colour.blue * param);
-
                     float softShadowParam = softShadow(lightSource,
-                                                       5,
-                                                       0.05,
+                                                       2.5,
+                                                       0.1,
                                                        intersection,
                                                        model_triangles);
-
-                    Colour proximityColour = Colour(
-                            float((colour.red) * softShadowParam + shadowColour.red * (1 - softShadowParam)),
-                            float((colour.green) * softShadowParam + shadowColour.green * (1 - softShadowParam)),
-                            float(colour.blue) * softShadowParam + shadowColour.blue * (1 - softShadowParam)
+                    softShadowParam *= 0.2;
+                    Colour proximityColour = Colour(float(colour.red) * softShadowParam,
+                                                    float(colour.green) * softShadowParam,
+                                                    float(colour.blue) * softShadowParam
                     );
                     window.setPixelColour(std::size_t(u), std::size_t(v),
                                           colour_uint32(proximityColour));
                 } else {
-
-                    if (isSoftShadow) {
-                        float softShadowParam = softShadow(lightSource,
-                                                           2.5,
-                                                           0.1,
-                                                           intersection,
-                                                           model_triangles);
-                        softShadowParam *= 0.2;
-                        Colour proximityColour = Colour(float(colour.red) * softShadowParam,
-                                                        float(colour.green) * softShadowParam,
-                                                        float(colour.blue) * softShadowParam
-                        );
-                        window.setPixelColour(std::size_t(u), std::size_t(v),
-                                              colour_uint32(proximityColour));
-                    } else {
-                        Colour proximityColour = Colour(float(colour.red) * 0.2,
-                                                        float(colour.green) * 0.2,
-                                                        float(colour.blue) * 0.2
-                        );
-                        window.setPixelColour(std::size_t(u), std::size_t(v),
-                                              colour_uint32(proximityColour));
-                    }
+                    Colour proximityColour = Colour(float(colour.red) * shadowPram,
+                                                    float(colour.green) * shadowPram,
+                                                    float(colour.blue) * shadowPram
+                    );
+                    window.setPixelColour(std::size_t(u), std::size_t(v),
+                                          colour_uint32(proximityColour));
                 }
             }
         }
