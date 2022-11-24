@@ -589,7 +589,8 @@ glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) 
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
                                                const std::vector<ModelTriangle>& triangles,
-                                               int recurrent) {
+                                               int recurrent,
+                                               bool isLight = false) {
     RayTriangleIntersection intersection;
     auto absolute_distance = float (INT32_MAX-1);
     for (int i = 0; i < int (triangles.size()); ++i) {
@@ -607,55 +608,57 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
             }
         }
     }
+    if (!isLight) {
+        if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
+            TextureMap textureMap = textureFilename[intersection.intersectedTriangle.colour.name];
+            glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
+            glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
 
-    if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
-        TextureMap textureMap = textureFilename[intersection.intersectedTriangle.colour.name];
-        glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
-        glm::vec3 texturePoint = affineMat * intersection.intersectionPoint;
+            uint32_t colourInt = textureMap.pixels[round(texturePoint[0]) +
+                                                   round(texturePoint[1]) * textureMap.width];
 
-        uint32_t colourInt = textureMap.pixels[round(texturePoint[0]) +
-                                               round(texturePoint[1]) * textureMap.width];
+            unsigned  mask;
+            mask = 0xff;
+            uint32_t red = (colourInt >> 16) & mask;
+            uint32_t green = (colourInt >> 8) & mask;
+            uint32_t blue = (colourInt) & mask;
+            intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
+        }
 
-        unsigned  mask;
-        mask = 0xff;
-        uint32_t red = (colourInt >> 16) & mask;
-        uint32_t green = (colourInt >> 8) & mask;
-        uint32_t blue = (colourInt) & mask;
-        intersection.intersectedTriangle.colour = Colour(int(red), int(green), int (blue));
+        if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
+            glm::vec3 reflection = mirror(intersection.intersectionPoint,
+                                          triangles,
+                                          camera_position,
+                                          intersection);
+            int currentRec = recurrent + 1;
+            if (currentRec > 3)  {
+                intersection.intersectedTriangle.colour = Colour{255, 255, 255};
+                return intersection;
+            }
+            intersection = getClosestIntersection(intersection.intersectionPoint,
+                                                  reflection,
+                                                  triangles, recurrent + 1);
+        } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
+            int currentRec = recurrent + 1;
+            if (currentRec > 3)  {
+                intersection.intersectedTriangle.colour = Colour{255, 255, 255};
+                return intersection;
+            }
+            glm::vec3 refractDirection = refract(ray_direction,
+                                                 intersection.intersectedTriangle.normal,
+                                                 1.4);
+            intersection = getClosestIntersection(intersection.intersectionPoint,
+                                                  refractDirection,
+                                                  triangles, recurrent + 1);
+            intersection.intersectedTriangle.colour.red =
+                    glm::clamp<int>(intersection.intersectedTriangle.colour.red -25, 0, 255);
+            intersection.intersectedTriangle.colour.green =
+                    glm::clamp<int>(intersection.intersectedTriangle.colour.green + 25, 0, 255);
+            intersection.intersectedTriangle.colour.blue =
+                    glm::clamp<int>(intersection.intersectedTriangle.colour.blue - 25, 0, 255);
+        }
     }
 
-    if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
-        glm::vec3 reflection = mirror(intersection.intersectionPoint,
-                        triangles,
-                        camera_position,
-                        intersection);
-        int currentRec = recurrent + 1;
-        if (currentRec > 3)  {
-            intersection.intersectedTriangle.colour = Colour{0, 0, 0};
-            return intersection;
-        }
-        intersection = getClosestIntersection(intersection.intersectionPoint,
-                                              reflection,
-                                              triangles, recurrent + 1);
-    } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
-        int currentRec = recurrent + 1;
-        if (currentRec > 3)  {
-            intersection.intersectedTriangle.colour = Colour{0, 0, 0};
-            return intersection;
-        }
-        glm::vec3 refractDirection = refract(ray_direction,
-                                    intersection.intersectedTriangle.normal,
-                                    1.4);
-        intersection = getClosestIntersection(intersection.intersectionPoint,
-                                              refractDirection,
-                                              triangles, recurrent + 1);
-        intersection.intersectedTriangle.colour.red =
-                glm::clamp<int>(intersection.intersectedTriangle.colour.red -25, 0, 255);
-        intersection.intersectedTriangle.colour.green =
-                glm::clamp<int>(intersection.intersectedTriangle.colour.green + 25, 0, 255);
-        intersection.intersectedTriangle.colour.blue =
-                glm::clamp<int>(intersection.intersectedTriangle.colour.blue - 25, 0, 255);
-    }
     return intersection;
 }
 
@@ -746,7 +749,6 @@ void rayTracingRender(DrawingWindow &window,
                 float shadowPram;
                 if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.8;
                 else shadowPram = 0.2;
-                std::cout << lightIntersection.intersectedTriangle.colour.name << std::endl;
                 if (isSoftShadow) {
                     float softShadowParam = softShadow(lightSource,
                                                        2.5,
