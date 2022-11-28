@@ -636,12 +636,12 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
 
 Colour shootRay(glm::vec3 cameraPosition,
                 glm::vec3 rayDirection,
-                RayTriangleIntersection intersection,
                 std::vector<ModelTriangle> triangles,
                 int recurrentNumber) {
     if (recurrentNumber >= 5) {
         return {255, 255, 255};
     }
+    RayTriangleIntersection intersection = getClosestIntersection(cameraPosition, rayDirection, triangles);
     Colour targetColour = intersection.intersectedTriangle.colour;
     if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
         TextureMap textureMap = textureFilename[intersection.intersectedTriangle.colour.name];
@@ -664,12 +664,8 @@ Colour shootRay(glm::vec3 cameraPosition,
                                       cameraPosition,
                                       intersection);
 
-        RayTriangleIntersection reflectIntersection = getClosestIntersection(intersection.intersectionPoint,
-                                              reflection,
-                                              triangles);
         targetColour = shootRay(intersection.intersectionPoint,
                                 reflection,
-                                reflectIntersection,
                                 triangles,
                                 recurrentNumber+1);
     } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
@@ -680,14 +676,8 @@ Colour shootRay(glm::vec3 cameraPosition,
                                       cameraPosition,
                                       intersection);
 
-        RayTriangleIntersection reflectionIntersection
-                = getClosestIntersection(intersection.intersectionPoint,
-                                         reflection,
-                                         triangles);
-
         Colour reflectionColour = shootRay(intersection.intersectionPoint,
                                            reflection,
-                                           reflectionIntersection,
                                            triangles,
                                        recurrentNumber+1);
 
@@ -703,14 +693,9 @@ Colour shootRay(glm::vec3 cameraPosition,
         glm::vec3 updatePoint = intersection.intersectionPoint;
         updatePoint = glm::dot(rayDirection, intersection.intersectedTriangle.normal)
                       < 0 ? updatePoint - intersection.intersectedTriangle.normal * 0.0001f : updatePoint + intersection.intersectedTriangle.normal * 0.0001f;
-        RayTriangleIntersection refractIntersection =
-                getClosestIntersection(updatePoint,
-                                       refractDirection,
-                                       triangles);
 
         Colour refraColour = shootRay(cameraPosition,
                                       refractDirection,
-                                      refractIntersection,
                                       triangles,
                                       recurrentNumber+1);
 
@@ -800,7 +785,6 @@ void rayTracingRender(DrawingWindow &window,
 
             Colour colour = shootRay(cameraPosition,
                                      imagePlaneDirection,
-                                     intersection,
                                      model_triangles,
                                      0);
 
@@ -819,7 +803,7 @@ void rayTracingRender(DrawingWindow &window,
                 else shadowPram = 0.2;
                 if (isSoftShadow) {
                     float softShadowParam = softShadow(lightSource,
-                                                       2.5,
+                                                       52.5,
                                                        0.1,
                                                        intersection,
                                                        model_triangles);
