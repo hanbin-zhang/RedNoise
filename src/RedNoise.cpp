@@ -673,7 +673,7 @@ Colour shootRay(glm::vec3 cameraPosition,
                                 triangles,
                                 recurrentNumber+1);
     } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
-        float n1 = 1, n2 = 1.3;
+
 
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                                       triangles,
@@ -691,26 +691,28 @@ Colour shootRay(glm::vec3 cameraPosition,
                                            triangles,
                                        recurrentNumber+1);
 
-        glm::vec3 refractDirection = refract(ray_direction,
+        float refractiveIndex = 1.3;
+        glm::vec3 refractDirection = refract(rayDirection,
                                              intersection.intersectedTriangle.normal,
-                                             n2);
+                                             refractiveIndex);
+
         if (refractDirection == glm::vec3(0, 0, 0)) {
-            return reflectionIntersection;
+            return reflectionColour;
         }
 
         glm::vec3 updatePoint = intersection.intersectionPoint;
-        updatePoint = glm::dot(ray_direction, intersection.intersectedTriangle.normal)
+        updatePoint = glm::dot(rayDirection, intersection.intersectedTriangle.normal)
                       < 0 ? updatePoint - intersection.intersectedTriangle.normal * 1e-3f : updatePoint + intersection.intersectedTriangle.normal * 1e-3f;
         RayTriangleIntersection refractIntersection =
                 getClosestIntersection(updatePoint,
                                        refractDirection,
-                                       triangles, recurrent + 1);
-
-        float reflectiveConst = fresnelLaw(ray_direction,
-                                           intersection.intersectedTriangle.normal, n2);
-        float refractiveConst = 1 - reflectiveConst;
+                                       triangles);
 
         Colour refraColour = refractIntersection.intersectedTriangle.colour;
+
+        float reflectiveConst = fresnelLaw(rayDirection,
+                                           intersection.intersectedTriangle.normal, refractiveIndex);
+        float refractiveConst = 1 - reflectiveConst;
 
         Colour doubleRcolour;
 
@@ -718,10 +720,8 @@ Colour shootRay(glm::vec3 cameraPosition,
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
         doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
 
-        intersection = refractIntersection;
-        intersection.intersectedTriangle.colour = doubleRcolour;
+        return doubleRcolour;
     }
-
 }
 
 float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTriangleIntersection& intersection,
@@ -739,7 +739,7 @@ float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTria
                 glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - oneLight);
 
                 RayTriangleIntersection lightIntersection =
-                        getClosestIntersection(oneLight, fromLightDirection, model_triangles, 0);
+                        getClosestIntersection(oneLight, fromLightDirection, model_triangles);
 
 
                 if (intersection.triangleIndex == lightIntersection.triangleIndex) lightNumber+=1;
@@ -776,7 +776,7 @@ void rayTracingRender(DrawingWindow &window,
 
             imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
             RayTriangleIntersection intersection =
-                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles, 0);
+                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
 
             float light_param;
             if (shading == Flat)
@@ -793,10 +793,13 @@ void rayTracingRender(DrawingWindow &window,
             glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
             RayTriangleIntersection lightIntersection =
-                    getClosestIntersection(lightSource, fromLightDirection, model_triangles,
-                                           0, true);
+                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
-            Colour colour = intersection.intersectedTriangle.colour;
+            Colour colour = shootRay(cameraPosition,
+                                     imagePlaneDirection,
+                                     intersection,
+                                     model_triangles,
+                                     0);
 
             if (intersection.triangleIndex == lightIntersection.triangleIndex) {
 
