@@ -708,7 +708,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         float reflectiveConst = fresnelLaw(rayDirection,
                                            intersection.intersectedTriangle.normal, refractiveIndex);
         float refractiveConst = 1 - reflectiveConst;
-
+        std::cout << reflectiveConst << std::endl;
         Colour doubleRcolour;
         doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
