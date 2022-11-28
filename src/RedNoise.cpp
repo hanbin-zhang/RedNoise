@@ -574,17 +574,40 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
 }
 
 glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
-    float cosi = -std::max(-1.f, std::min(1.f, glm::dot(incident, normal)));
-    float etai = 1, etat = refractive_index;
-    glm::vec3 N = normal;
-    if (cosi < 0) {
-        cosi = -cosi;
-        std::swap(etai, etat);
-        N = -normal;
+    float cosi = glm::dot(incident, normal);
+    float n1 = 1, n2 = refractive_index;
+    float ratio = n1 / n2;
+    if (cosi > 0) {
+        ratio = 1/ratio;
+        normal = -normal;
     }
-    float eta = etai/etat;
-    float  k = 1-eta*eta*(1-cosi*cosi);
-    return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident*eta + N * (eta * cosi - sqrtf(k)));
+    cosi = abs(cosi);
+    float  k = 1 - ratio * ratio * (1 - cosi * cosi);
+    return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident * ratio + normal * (ratio * cosi - sqrtf(k)));
+}
+
+float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
+
+    float cosi = glm::dot(incident, normal);
+    float etai = 1;
+    float etat = refractiveIndex;
+
+    if (cosi > 0) {
+
+        std::swap(etai, etat);
+    }
+    float eta = etai / etat;
+    float sint = eta * sqrtf(std::max(0.f, 1 - cosi * cosi));
+    if (sint >= 1) return 1;
+    else {
+        cosi = fabsf(cosi);
+        float cost = sqrtf(std::max(0.f, 1 - sint * sint));
+        float rs = ((etat * cosi) - (etai * cost)) / (etat * cosi + etai * cost);
+        float rp = (etai * cosi - etat * cost) / (etai * cosi + etat * cost);
+        rs = rs * rs;
+        rp = rp * rp;
+        float r = (rs + rp )*0.5f;
+    }
 }
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
@@ -592,6 +615,10 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
                                                int recurrent,
                                                bool isLight = false) {
     RayTriangleIntersection intersection;
+    if (recurrent+1 > 3)  {
+        intersection.intersectedTriangle.colour = Colour{255, 255, 255};
+        return intersection;
+    }
     auto absolute_distance = float (INT32_MAX-1);
     for (int i = 0; i < int (triangles.size()); ++i) {
         glm::vec3 e0 = triangles[i].vertices[1] - triangles[i].vertices[0];
@@ -639,11 +666,6 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
                                                   reflection,
                                                   triangles, recurrent + 1);
         } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
-            int currentRec = recurrent + 1;
-            if (currentRec > 3)  {
-                intersection.intersectedTriangle.colour = Colour{255, 255, 255};
-                return intersection;
-            }
             float n1 = 1, n2 = 1.3;
 
             glm::vec3 reflection = mirror(intersection.intersectionPoint,
@@ -659,13 +681,17 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
             glm::vec3 refractDirection = refract(ray_direction,
                                                  intersection.intersectedTriangle.normal,
                                                  n2);
-            glm::vec3 refraOrigin = intersection.intersectionPoint;
-            refraOrigin = glm::dot(refractDirection, intersection.intersectedTriangle.normal)
-                    < 0 ? refraOrigin - intersection.intersectedTriangle.normal * 1e-3f : refraOrigin + intersection.intersectedTriangle.normal * 1e-3f;
+            if (refractDirection == glm::vec3(0, 0, 0)) {
+                return reflectionIntersection;
+            }
+
+            glm::vec3 updatePoint = intersection.intersectionPoint;
+            updatePoint = glm::dot(ray_direction, intersection.intersectedTriangle.normal)
+                          < 0 ? updatePoint - intersection.intersectedTriangle.normal * 1e-3f : updatePoint + intersection.intersectedTriangle.normal * 1e-3f;
             RayTriangleIntersection refractIntersection =
-                    getClosestIntersection(refraOrigin,
-                                                  refractDirection,
-                                                  triangles, recurrent + 1);
+                    getClosestIntersection(updatePoint,
+                                           refractDirection,
+                                           triangles, recurrent + 1);
 
             glm::vec3 N = intersection.intersectedTriangle.normal;
             float cosi = -std::max(-1.f, std::min(1.f, glm::dot(camera_position,
