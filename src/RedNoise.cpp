@@ -573,7 +573,7 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
     return reflection;
 }
 
-glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
+/*glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
     float incidentAngle = glm::dot(incident, normal);
     float n1 = 1, n2 = refractive_index;
     float ratio = n1 / n2;
@@ -584,7 +584,7 @@ glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) 
     incidentAngle = abs(incidentAngle);
     float  k = 1 - ratio * ratio * (1 - incidentAngle * incidentAngle);
     return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident * ratio + normal * (ratio * incidentAngle - sqrtf(k)));
-}
+}*/
 
 float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
 
@@ -600,14 +600,16 @@ float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
     float sint = eta * sqrtf(std::max(0.f, 1 - cosi * cosi));
     if (sint >= 1) return 1;
     else {
-        cosi = fabsf(cosi);
         float cost = sqrtf(std::max(0.f, 1 - sint * sint));
+        cosi = fabsf(cosi);
+
         float rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
         float rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
-        rs = rs * rs;
-        rp = rp * rp;
-        return (rs + rp )*0.5f;
+//        rs = rs * rs;
+//        rp = rp * rp;
+        return (rs * rs + rp * rp )*0.5f;
     }
+    return 0;
 }
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
@@ -690,11 +692,16 @@ Colour shootRay(glm::vec3 cameraPosition,
             return reflectionColour;
         }
 
-        glm::vec3 updatePoint = intersection.intersectionPoint;
-        updatePoint = glm::dot(rayDirection, intersection.intersectedTriangle.normal)
-                      < 0 ? updatePoint - intersection.intersectedTriangle.normal * 0.0001f : updatePoint + intersection.intersectedTriangle.normal * 0.0001f;
+        float incidentAngle = glm::dot(rayDirection, intersection.intersectedTriangle.normal);
+        glm::vec3 updatePoint;
 
-        Colour refraColour = shootRay(cameraPosition,
+        if (incidentAngle < 0) {
+            updatePoint = intersection.intersectionPoint - intersection.intersectedTriangle.normal * 0.0001f;
+        } else {
+            updatePoint = intersection.intersectionPoint + intersection.intersectedTriangle.normal * 0.0001f;
+        }
+
+        Colour refraColour = shootRay(updatePoint,
                                       refractDirection,
                                       triangles,
                                       recurrentNumber+1);
