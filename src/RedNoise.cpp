@@ -677,13 +677,19 @@ Colour shootRay(glm::vec3 cameraPosition,
 
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                                       triangles,
-                                      camera_position,
+                                      cameraPosition,
                                       intersection);
 
         RayTriangleIntersection reflectionIntersection
                 = getClosestIntersection(intersection.intersectionPoint,
                                          reflection,
-                                         triangles, recurrent + 1);
+                                         triangles);
+
+        Colour reflectionColour = shootRay(intersection.intersectionPoint,
+                                           reflection,
+                                           reflectionIntersection,
+                                           triangles,
+                                       recurrentNumber+1);
 
         glm::vec3 refractDirection = refract(ray_direction,
                                              intersection.intersectedTriangle.normal,
@@ -704,14 +710,13 @@ Colour shootRay(glm::vec3 cameraPosition,
                                            intersection.intersectedTriangle.normal, n2);
         float refractiveConst = 1 - reflectiveConst;
 
-        Colour reflecColour = reflectionIntersection.intersectedTriangle.colour;
         Colour refraColour = refractIntersection.intersectedTriangle.colour;
 
         Colour doubleRcolour;
 
-        doubleRcolour.red = (reflectiveConst * reflecColour.red) + (refractiveConst * refraColour.red);
-        doubleRcolour.green = (reflectiveConst * reflecColour.green) + (refractiveConst * refraColour.green);
-        doubleRcolour.blue = (reflectiveConst * reflecColour.blue) + (refractiveConst * refraColour.blue);
+        doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
+        doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
+        doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
 
         intersection = refractIntersection;
         intersection.intersectedTriangle.colour = doubleRcolour;
