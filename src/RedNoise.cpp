@@ -720,8 +720,9 @@ Colour shootRay(glm::vec3 cameraPosition,
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
         doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
 
-        return doubleRcolour;
+        targetColour = doubleRcolour;
     }
+    return targetColour;
 }
 
 float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTriangleIntersection& intersection,
