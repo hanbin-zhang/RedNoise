@@ -574,16 +574,16 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
 }
 
 glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
-    float cosi = glm::dot(incident, normal);
+    float incidentAngle = glm::dot(incident, normal);
     float n1 = 1, n2 = refractive_index;
     float ratio = n1 / n2;
-    if (cosi > 0) {
+    if (incidentAngle > 0) {
         ratio = 1/ratio;
         normal = -normal;
     }
-    cosi = abs(cosi);
-    float  k = 1 - ratio * ratio * (1 - cosi * cosi);
-    return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident * ratio + normal * (ratio * cosi - sqrtf(k)));
+    incidentAngle = abs(incidentAngle);
+    float  k = 1 - ratio * ratio * (1 - incidentAngle * incidentAngle);
+    return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident * ratio + normal * (ratio * incidentAngle - sqrtf(k)));
 }
 
 float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
@@ -642,7 +642,7 @@ Colour shootRay(glm::vec3 cameraPosition,
     if (recurrentNumber >= 5) {
         return {255, 255, 255};
     }
-    Colour targetColour;
+    Colour targetColour = intersection.intersectedTriangle.colour;
     if (textureFilename.count(intersection.intersectedTriangle.colour.name)) {
         TextureMap textureMap = textureFilename[intersection.intersectedTriangle.colour.name];
         glm::mat3 affineMat = calculate_affine_mtx(intersection.intersectedTriangle, float (textureMap.width), float (textureMap.height));
@@ -669,7 +669,7 @@ Colour shootRay(glm::vec3 cameraPosition,
                                               triangles);
         targetColour = shootRay(intersection.intersectionPoint,
                                 reflection,
-                                intersection,
+                                reflectIntersection,
                                 triangles,
                                 recurrentNumber+1);
     } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
@@ -702,24 +702,26 @@ Colour shootRay(glm::vec3 cameraPosition,
 
         glm::vec3 updatePoint = intersection.intersectionPoint;
         updatePoint = glm::dot(rayDirection, intersection.intersectedTriangle.normal)
-                      < 0 ? updatePoint - intersection.intersectedTriangle.normal * 1e-3f : updatePoint + intersection.intersectedTriangle.normal * 1e-3f;
+                      < 0 ? updatePoint - intersection.intersectedTriangle.normal * 0.0001f : updatePoint + intersection.intersectedTriangle.normal * 0.0001f;
         RayTriangleIntersection refractIntersection =
                 getClosestIntersection(updatePoint,
                                        refractDirection,
                                        triangles);
 
-        Colour refraColour = refractIntersection.intersectedTriangle.colour;
+        Colour refraColour = shootRay(cameraPosition,
+                                      refractDirection,
+                                      refractIntersection,
+                                      triangles,
+                                      recurrentNumber+1);
 
         float reflectiveConst = fresnelLaw(rayDirection,
                                            intersection.intersectedTriangle.normal, refractiveIndex);
         float refractiveConst = 1 - reflectiveConst;
 
         Colour doubleRcolour;
-
         doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
         doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
-
         targetColour = doubleRcolour;
     }
     return targetColour;
