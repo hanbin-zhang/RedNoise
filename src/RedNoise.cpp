@@ -573,7 +573,7 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
     return reflection;
 }
 
-/*glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
+glm::vec3 refract(glm::vec3 incident, glm::vec3 normal, float refractive_index) {
     float incidentAngle = glm::dot(incident, normal);
     float n1 = 1, n2 = refractive_index;
     float ratio = n1 / n2;
@@ -584,7 +584,7 @@ glm::vec3 mirror(glm::vec3 vertex, const std::vector<ModelTriangle>& model_trian
     incidentAngle = abs(incidentAngle);
     float  k = 1 - ratio * ratio * (1 - incidentAngle * incidentAngle);
     return k < 0 ? glm::vec3 {0, 0, 0} :glm::normalize(incident * ratio + normal * (ratio * incidentAngle - sqrtf(k)));
-}*/
+}
 
 float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
 
@@ -609,7 +609,6 @@ float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
 //        rp = rp * rp;
         return (rs * rs + rp * rp )*0.5f;
     }
-    return 0;
 }
 
 RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::vec3 ray_direction,
@@ -657,7 +656,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         uint32_t red = (colourInt >> 16) & mask;
         uint32_t green = (colourInt >> 8) & mask;
         uint32_t blue = (colourInt) & mask;
-        targetColour = Colour(int(red), int(green), int (blue));
+        return {int(red), int(green), int (blue)};
     }
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
@@ -714,7 +713,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
         doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
-        targetColour = doubleRcolour;
+        return doubleRcolour;
     }
     return targetColour;
 }
