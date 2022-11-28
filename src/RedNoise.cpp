@@ -476,10 +476,10 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                  const std::vector<ModelTriangle>& model_triangles, glm::vec3 targetNormal) {
 
     float proximityParam = proximityParameter(lightSource,
-                                              vertex, 32.0);
+                                              vertex, 20.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 256)) + 0.2f, 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)) + 0.2f, 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -602,11 +602,11 @@ float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
     else {
         cosi = fabsf(cosi);
         float cost = sqrtf(std::max(0.f, 1 - sint * sint));
-        float rs = ((etat * cosi) - (etai * cost)) / (etat * cosi + etai * cost);
-        float rp = (etai * cosi - etat * cost) / (etai * cosi + etat * cost);
+        float rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+        float rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
         rs = rs * rs;
         rp = rp * rp;
-        float r = (rs + rp )*0.5f;
+        return (rs + rp )*0.5f;
     }
 }
 
@@ -693,34 +693,19 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
                                            refractDirection,
                                            triangles, recurrent + 1);
 
-            glm::vec3 N = intersection.intersectedTriangle.normal;
-            float cosi = -std::max(-1.f, std::min(1.f, glm::dot(camera_position,
-                                                                N)));
+            float reflectiveConst = fresnelLaw(ray_direction,
+                                               intersection.intersectedTriangle.normal, n2);
+            float refractiveConst = 1 - reflectiveConst;
 
-            if (cosi < 0) {
-
-                std::swap(n1, n2);
-            }
-            cosi = fabsf(cosi);
-            float eta = n1 / n2;
-            float  cost = sqrtf(1 - eta * eta * (1 - cosi * cosi));
-
-            float rs = (n2 * cosi - n1 * cost) / (n2 * cosi + n1 * cost);
-            float rp = (n1 * cosi - n2 * cost) / (n1 * cosi + n2 * cost);
-            rs = rs * rs;
-            rp = rp * rp;
-            float r = (rs + rp )*0.5f;
             Colour reflecColour = reflectionIntersection.intersectedTriangle.colour;
             Colour refraColour = refractIntersection.intersectedTriangle.colour;
 
-            /*std::cout << reflecColour << std::endl;
-            std::cout << refraColour << std::endl;*/
+            Colour doubleRcolour;
 
-            Colour doubleRcolour = Colour(
-                    r*reflecColour.red + (1-r) * refraColour.red,
-                    r*reflecColour.green + (1-r) * refraColour.green,
-                    r*reflecColour.blue + (1-r) * refraColour.blue
-                    );
+            doubleRcolour.red = (reflectiveConst * reflecColour.red) + (refractiveConst * refraColour.red);
+            doubleRcolour.green = (reflectiveConst * reflecColour.green) + (refractiveConst * refraColour.green);
+            doubleRcolour.blue = (reflectiveConst * reflecColour.blue) + (refractiveConst * refraColour.blue);
+
             intersection = refractIntersection;
             intersection.intersectedTriangle.colour = doubleRcolour;
         }
@@ -815,7 +800,7 @@ void rayTracingRender(DrawingWindow &window,
                                       colour_uint32(targetColour));
             } else {
                 float shadowPram;
-                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.6;
+                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.45;
                 else shadowPram = 0.2;
                 if (isSoftShadow) {
                     float softShadowParam = softShadow(lightSource,
@@ -908,21 +893,6 @@ void Rasterised_render(DrawingWindow &window,
     }
 
 
-}
-
-glm::mat3x3 reverse_mtx(glm::mat3x3 mat) {
-    glm::mat3x3 reverse_matrix;
-    float determinant = 0;
-    determinant += (mat[0][0] * (mat[1][(0 + 1) % 3] * mat[2][(0 + 2) % 3] - mat[1][(0 + 2) % 3] * mat[2][(0 + 1) % 3]));
-    determinant += (mat[0][1] * (mat[1][(1 + 1) % 3] * mat[2][(1 + 2) % 3] - mat[1][(1 + 2) % 3] * mat[2][(1 + 1) % 3]));
-    determinant += (mat[0][2] * (mat[1][(2 + 1) % 3] * mat[2][(2 + 2) % 3] - mat[1][(2 + 2) % 3] * mat[2][(2 + 1) % 3]));
-
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < 3; j++){
-            reverse_matrix[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3])) / determinant;
-        }
-    }
-    return reverse_matrix;
 }
 
 //void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
