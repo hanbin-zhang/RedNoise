@@ -682,6 +682,8 @@ Colour shootRay(glm::vec3 cameraPosition,
                                            triangles,
                                        recurrentNumber+1);
 
+        intersection.intersectedTriangle.normal = intersection.intersectedTriangle.normal*-1.0f;
+
         float refractiveIndex = 1.3;
         glm::vec3 refractDirection = refract(rayDirection,
                                              intersection.intersectedTriangle.normal,
@@ -708,7 +710,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         float reflectiveConst = fresnelLaw(rayDirection,
                                            intersection.intersectedTriangle.normal, refractiveIndex);
         float refractiveConst = 1 - reflectiveConst;
-        std::cout << reflectiveConst << std::endl;
+
         Colour doubleRcolour;
         doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
         doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
@@ -794,7 +796,7 @@ void rayTracingRender(DrawingWindow &window,
                                      model_triangles,
                                      0);
 
-            if (intersection.triangleIndex == lightIntersection.triangleIndex) {
+            if (true) {
 
                 Colour targetColour = Colour(colour.red * (light_param),
                                              (colour.green) * (light_param),
