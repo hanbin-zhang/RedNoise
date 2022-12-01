@@ -691,7 +691,7 @@ Colour shootRay(glm::vec3 cameraPosition,
                                       cameraPosition,
                                       intersection);
 
-        targetColour = shootRay(intersection.intersectionPoint,
+        return shootRay(intersection.intersectionPoint,
                                 reflection,
                                 lightSource,
                                 triangles,
