@@ -769,6 +769,7 @@ Colour shootRay(glm::vec3 cameraPosition,
 
     if (isSoftShadow) {
         float ssParam = softShadowParam(intersection.intersectionPoint, triangles, intersection);
+        ssParam = glm::clamp<float>(ssParam + 0.2, 0.0f, 1.0f);
         targetColour = Colour(targetColour.red * (light_param) * ssParam,
                               (targetColour.green) * (light_param) * ssParam,
                               (targetColour.blue) * (light_param)* ssParam);
@@ -994,7 +995,7 @@ int main(int argc, char *argv[]) {
     float lightY = 0.5;
     float lightZ = 0.3;
     glm::vec3 lightSource = {lightX, lightY, lightZ};
-    thisLightCluster = lightCluster(lightSource, 2, 0.1);
+    thisLightCluster = lightCluster(lightSource, 5, 0.1);
 
     while (true) {
         lightSource = {lightX, lightY, lightZ};
