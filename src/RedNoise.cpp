@@ -26,6 +26,7 @@ int shading = Flat;
 bool isSoftShadow = false;
 // corresponding texture file name
 std::map<std::string, TextureMap> textureFilename;
+std::vector<glm::vec3> thisLightCluster;
 
 std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
 
@@ -605,8 +606,6 @@ float fresnelLaw(glm::vec3 incident, glm::vec3 normal, float refractiveIndex) {
 
         float rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
         float rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
-//        rs = rs * rs;
-//        rp = rp * rp;
         return (rs * rs + rp * rp )*0.5f;
     }
 }
@@ -634,11 +633,8 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
     return intersection;
 }
 
-float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTriangleIntersection& intersection,
-                 const std::vector<ModelTriangle>& model_triangles) {
-    int lightNumber=0;
-    int totalLightNumber=0;
-
+std::vector<glm::vec3> lightCluster(glm::vec3 lightSource, int radian, float stepSize) {
+    std::vector<glm::vec3> lights;
     for (int i = -radian; i <= radian ; i++) {
         for (int j = -radian; j <= radian ; j++) {
             if ((i * i + j * j)<=radian*radian) {
@@ -646,18 +642,29 @@ float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTria
                                       lightSource.y,
                                       lightSource.z+float (j)*stepSize};
 
-                glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - oneLight);
-
-                RayTriangleIntersection lightIntersection =
-                        getClosestIntersection(oneLight, fromLightDirection, model_triangles);
-
-
-                if (intersection.triangleIndex == lightIntersection.triangleIndex) lightNumber+=1;
-                totalLightNumber +=1;
+                lights.emplace_back(oneLight);
             }
         }
     }
-    return float (lightNumber)/float (totalLightNumber);
+    return lights;
+}
+
+float softShadowParam(glm::vec3 point,
+                      const std::vector<ModelTriangle>& triangles,
+                      RayTriangleIntersection intersection) {
+    int lightNumber;
+    for (auto light : thisLightCluster) {
+        glm::vec3 fromLightDirection = glm::normalize(point - light);
+
+        RayTriangleIntersection lightIntersection =
+                getClosestIntersection(light, fromLightDirection, triangles);
+
+        if (intersection.triangleIndex == lightIntersection.triangleIndex) {
+
+            lightNumber += 1;
+        }
+    }
+        return float (lightNumber) / float (thisLightCluster.size());
 }
 
 Colour shootRay(glm::vec3 cameraPosition,
@@ -682,7 +689,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         uint32_t red = (colourInt >> 16) & mask;
         uint32_t green = (colourInt >> 8) & mask;
         uint32_t blue = (colourInt) & mask;
-        return {int(red), int(green), int (blue)};
+        targetColour = Colour {int(red), int(green), int (blue)};
     }
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
@@ -760,42 +767,34 @@ Colour shootRay(glm::vec3 cameraPosition,
                                  lightSource, cameraPosition);
     else if (shading == Nicht) light_param = 1;
 
-    glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
-
-    RayTriangleIntersection lightIntersection =
-            getClosestIntersection(lightSource, fromLightDirection, triangles);
-
-    if (intersection.triangleIndex == lightIntersection.triangleIndex) {
-
-        targetColour = Colour(targetColour.red * (light_param),
-                             (targetColour.green) * (light_param),
-                             (targetColour.blue) * (light_param)
-        );
+    if (isSoftShadow) {
+        float ssParam = softShadowParam(intersection.intersectionPoint, triangles, intersection);
+        targetColour = Colour(targetColour.red * (light_param) * ssParam,
+                              (targetColour.green) * (light_param) * ssParam,
+                              (targetColour.blue) * (light_param)* ssParam);
     } else {
-        float shadowPram;
-        if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.45;
-        else shadowPram = 0.2;
-        if (isSoftShadow) {
-            float softShadowParam = softShadow(lightSource,
-                                               2,
-                                               0.1,
-                                               intersection,
-                                               triangles);
-            softShadowParam *= 0.2;
-            targetColour = Colour(float(targetColour.red) * softShadowParam,
-                                            float(targetColour.green) * softShadowParam,
-                                            float(targetColour.blue) * softShadowParam
-            );
+        glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
+        RayTriangleIntersection lightIntersection =
+                getClosestIntersection(lightSource, fromLightDirection, triangles);
+
+        if (intersection.triangleIndex == lightIntersection.triangleIndex) {
+
+            targetColour = Colour(targetColour.red * (light_param),
+                                  (targetColour.green) * (light_param),
+                                  (targetColour.blue) * (light_param)
+            );
         } else {
-            targetColour = Colour(float(targetColour.red) * shadowPram,
-                                            float(targetColour.green) * shadowPram,
-                                            float(targetColour.blue) * shadowPram
-            );
+            float shadowPram;
+            if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) shadowPram = 0.45;
+            else shadowPram = 0.2;
 
+            targetColour = Colour(float(targetColour.red) * shadowPram,
+                                  float(targetColour.green) * shadowPram,
+                                  float(targetColour.blue) * shadowPram
+            );
         }
     }
-
     return targetColour;
 }
 
@@ -994,9 +993,11 @@ int main(int argc, char *argv[]) {
     float lightX = 0.0;
     float lightY = 0.5;
     float lightZ = 0.3;
+    glm::vec3 lightSource = {lightX, lightY, lightZ};
+    thisLightCluster = lightCluster(lightSource, 1, 0.1);
 
     while (true) {
-        glm::vec3 lightSource = {lightX, lightY, lightZ};
+        lightSource = {lightX, lightY, lightZ};
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
                                                           &is_rotate, &render_mode ,&lightX, &lightY, &lightZ);
