@@ -634,9 +634,35 @@ RayTriangleIntersection getClosestIntersection(glm::vec3 camera_position, glm::v
     return intersection;
 }
 
+float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTriangleIntersection& intersection,
+                 const std::vector<ModelTriangle>& model_triangles) {
+    int lightNumber=0;
+    int totalLightNumber=0;
+
+    for (int i = -radian; i <= radian ; i++) {
+        for (int j = -radian; j <= radian ; j++) {
+            if ((i * i + j * j)<=radian*radian) {
+                glm::vec3 oneLight = {lightSource.x+float (i)*stepSize,
+                                      lightSource.y,
+                                      lightSource.z+float (j)*stepSize};
+
+                glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - oneLight);
+
+                RayTriangleIntersection lightIntersection =
+                        getClosestIntersection(oneLight, fromLightDirection, model_triangles);
+
+
+                if (intersection.triangleIndex == lightIntersection.triangleIndex) lightNumber+=1;
+                totalLightNumber +=1;
+            }
+        }
+    }
+    return float (lightNumber)/float (totalLightNumber);
+}
 
 Colour shootRay(glm::vec3 cameraPosition,
                 glm::vec3 rayDirection,
+                glm::vec3 lightSource,
                 std::vector<ModelTriangle> triangles,
                 int recurrentNumber) {
     if (recurrentNumber >= 5) {
@@ -667,6 +693,7 @@ Colour shootRay(glm::vec3 cameraPosition,
 
         targetColour = shootRay(intersection.intersectionPoint,
                                 reflection,
+                                lightSource,
                                 triangles,
                                 recurrentNumber+1);
     } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
@@ -679,8 +706,9 @@ Colour shootRay(glm::vec3 cameraPosition,
 
         Colour reflectionColour = shootRay(intersection.intersectionPoint,
                                            reflection,
+                                           lightSource,
                                            triangles,
-                                       recurrentNumber+1);
+                                           recurrentNumber+1);
 
         intersection.intersectedTriangle.normal = intersection.intersectedTriangle.normal*-1.0f;
 
@@ -704,6 +732,7 @@ Colour shootRay(glm::vec3 cameraPosition,
 
         Colour refraColour = shootRay(updatePoint,
                                       refractDirection,
+                                      lightSource,
                                       triangles,
                                       recurrentNumber+1);
 
@@ -717,34 +746,59 @@ Colour shootRay(glm::vec3 cameraPosition,
         doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
         return doubleRcolour;
     }
+    // shadow
+
+    float light_param;
+    if (shading == Flat)
+        light_param = lightParam(lightSource, cameraPosition, intersection.intersectionPoint,
+                                 triangles, intersection.intersectedTriangle.normal);
+    else if (shading == Gourand)
+        light_param = gouraudLight(triangles, intersection,
+                                   lightSource, cameraPosition);
+    else if (shading == Phong)
+        light_param = phongLight(triangles, intersection,
+                                 lightSource, cameraPosition);
+    else if (shading == Nicht) light_param = 1;
+
+    glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
+
+    RayTriangleIntersection lightIntersection =
+            getClosestIntersection(lightSource, fromLightDirection, triangles);
+
+    if (intersection.triangleIndex == lightIntersection.triangleIndex) {
+
+        targetColour = Colour(targetColour.red * (light_param),
+                             (targetColour.green) * (light_param),
+                             (targetColour.blue) * (light_param)
+        );
+    } else {
+        float shadowPram;
+        if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.45;
+        else shadowPram = 0.2;
+        if (isSoftShadow) {
+            float softShadowParam = softShadow(lightSource,
+                                               52.5,
+                                               0.1,
+                                               intersection,
+                                               triangles);
+            softShadowParam *= 0.2;
+            targetColour = Colour(float(targetColour.red) * softShadowParam,
+                                            float(targetColour.green) * softShadowParam,
+                                            float(targetColour.blue) * softShadowParam
+            );
+
+        } else {
+            targetColour = Colour(float(targetColour.red) * shadowPram,
+                                            float(targetColour.green) * shadowPram,
+                                            float(targetColour.blue) * shadowPram
+            );
+
+        }
+    }
+
     return targetColour;
 }
 
-float softShadow(glm::vec3 lightSource, int radian, float stepSize,const RayTriangleIntersection& intersection,
-                 const std::vector<ModelTriangle>& model_triangles) {
-    int lightNumber=0;
-    int totalLightNumber=0;
-
-    for (int i = -radian; i <= radian ; i++) {
-        for (int j = -radian; j <= radian ; j++) {
-            if ((i * i + j * j)<=radian*radian) {
-                glm::vec3 oneLight = {lightSource.x+float (i)*stepSize,
-                                      lightSource.y,
-                                      lightSource.z+float (j)*stepSize};
-
-                glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - oneLight);
-
-                RayTriangleIntersection lightIntersection =
-                        getClosestIntersection(oneLight, fromLightDirection, model_triangles);
-
-
-                if (intersection.triangleIndex == lightIntersection.triangleIndex) lightNumber+=1;
-                totalLightNumber +=1;
-            }
-        }
-    }
-    return float (lightNumber)/float (totalLightNumber);
-}
 
 void rayTracingRender(DrawingWindow &window,
                       const std::vector<ModelTriangle>& model_triangles,
@@ -771,66 +825,16 @@ void rayTracingRender(DrawingWindow &window,
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
 
             imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
-            RayTriangleIntersection intersection =
-                    getClosestIntersection(cameraPosition, imagePlaneDirection, model_triangles);
-
-            float light_param;
-            if (shading == Flat)
-                light_param = lightParam(lightSource, cameraPosition, intersection.intersectionPoint,
-                                         model_triangles, intersection.intersectedTriangle.normal);
-            else if (shading == Gourand)
-                light_param = gouraudLight(model_triangles, intersection,
-                                           lightSource, cameraPosition);
-            else if (shading == Phong)
-                light_param = phongLight(model_triangles, intersection,
-                                         lightSource, cameraPosition);
-            else if (shading == Nicht) light_param = 1;
-
-            glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
-
-            RayTriangleIntersection lightIntersection =
-                    getClosestIntersection(lightSource, fromLightDirection, model_triangles);
 
             Colour colour = shootRay(cameraPosition,
                                      imagePlaneDirection,
+                                     lightSource,
                                      model_triangles,
                                      0);
 
-            if (true) {
+            window.setPixelColour(std::size_t(u), std::size_t(v),
+                                  colour_uint32(colour));
 
-                Colour targetColour = Colour(colour.red * (light_param),
-                                             (colour.green) * (light_param),
-                                             (colour.blue) * (light_param)
-                );
-
-                window.setPixelColour(std::size_t(u), std::size_t(v),
-                                      colour_uint32(targetColour));
-            } else {
-                float shadowPram;
-                if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) shadowPram=0.45;
-                else shadowPram = 0.2;
-                if (isSoftShadow) {
-                    float softShadowParam = softShadow(lightSource,
-                                                       52.5,
-                                                       0.1,
-                                                       intersection,
-                                                       model_triangles);
-                    softShadowParam *= 0.2;
-                    Colour proximityColour = Colour(float(colour.red) * softShadowParam,
-                                                    float(colour.green) * softShadowParam,
-                                                    float(colour.blue) * softShadowParam
-                    );
-                    window.setPixelColour(std::size_t(u), std::size_t(v),
-                                          colour_uint32(proximityColour));
-                } else {
-                    Colour proximityColour = Colour(float(colour.red) * shadowPram,
-                                                    float(colour.green) * shadowPram,
-                                                    float(colour.blue) * shadowPram
-                    );
-                    window.setPixelColour(std::size_t(u), std::size_t(v),
-                                          colour_uint32(proximityColour));
-                }
-            }
         }
     }
 }
