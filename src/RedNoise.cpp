@@ -777,7 +777,7 @@ Colour shootRay(glm::vec3 cameraPosition,
         else shadowPram = 0.2;
         if (isSoftShadow) {
             float softShadowParam = softShadow(lightSource,
-                                               52.5,
+                                               2,
                                                0.1,
                                                intersection,
                                                triangles);
