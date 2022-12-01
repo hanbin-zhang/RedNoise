@@ -651,17 +651,17 @@ std::vector<glm::vec3> lightCluster(glm::vec3 lightSource, int radian, float ste
 
 float softShadowParam(glm::vec3 point,
                       const std::vector<ModelTriangle>& triangles,
-                      RayTriangleIntersection intersection) {
-    int lightNumber;
-    for (auto light : thisLightCluster) {
+                      const RayTriangleIntersection& intersection) {
+    int lightNumber = 0;
+    for (int i = 0; i < int (thisLightCluster.size()); ++i) {
+        glm::vec3 light = thisLightCluster[i];
         glm::vec3 fromLightDirection = glm::normalize(point - light);
 
         RayTriangleIntersection lightIntersection =
                 getClosestIntersection(light, fromLightDirection, triangles);
 
         if (intersection.triangleIndex == lightIntersection.triangleIndex) {
-
-            lightNumber += 1;
+            lightNumber = lightNumber + 1;
         }
     }
         return float (lightNumber) / float (thisLightCluster.size());
@@ -994,7 +994,7 @@ int main(int argc, char *argv[]) {
     float lightY = 0.5;
     float lightZ = 0.3;
     glm::vec3 lightSource = {lightX, lightY, lightZ};
-    thisLightCluster = lightCluster(lightSource, 1, 0.1);
+    thisLightCluster = lightCluster(lightSource, 2, 0.1);
 
     while (true) {
         lightSource = {lightX, lightY, lightZ};
