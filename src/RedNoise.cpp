@@ -666,7 +666,7 @@ float softShadowParam(glm::vec3 point,
         if (intersection.triangleIndex == lightIntersection.triangleIndex) {
             lightNumber = lightNumber + 1;
         } else if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) {
-            return 0.7;
+            return 0.78;
         }
     }
         return float (lightNumber) / float (thisLightCluster.size());
