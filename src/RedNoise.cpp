@@ -95,7 +95,8 @@ std::map<std::string, Colour> read_colour_palette(const std::string& file_name) 
 
 std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
                                           const std::string& colour_file_name,
-                                          float scaling) {
+                                          float scaling,
+                                          glm::vec3 vertexShift) {
 
     std::string current_line;
     std::ifstream MyReadFile(file_name);
@@ -109,9 +110,9 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
         if (current_line.compare(0, 2, "v ")==0) {
             //put a vertex on to the list
             std::vector<std::string> vertices_string = split(current_line, ' ');
-            vertices.emplace_back(std::stof(vertices_string[1]) * scaling,
-                                  std::stof(vertices_string[2]) * scaling,
-                                  std::stof(vertices_string[3]) * scaling);
+            vertices.emplace_back(std::stof(vertices_string[1]) * scaling + vertexShift[0],
+                                  std::stof(vertices_string[2]) * scaling + vertexShift[1],
+                                  std::stof(vertices_string[3]) * scaling + vertexShift[2]);
 
         } else if (current_line.compare(0, 2, "vt")==0) {
             std::vector<std::string> vertices_string = split(current_line, ' ');
@@ -986,7 +987,21 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
-    std::vector<ModelTriangle> model_triangles = read_OBJ_files("../textured-cornell-box.obj", "../textured-cornell-box.mtl", 0.35);
+    std::vector<ModelTriangle> box_model_triangles = read_OBJ_files("../textured-cornell-box.obj",
+                                                                "../textured-cornell-box.mtl",
+                                                                0.35,
+                                                                glm::vec3(0, 0, 0));
+    std::vector<ModelTriangle> sphere_model_triangles = read_OBJ_files("../sphere.obj",
+                                                                       "../textured-cornell-box.mtl",
+                                                                       0.35,
+                                                                       glm::vec3(-0.4, -1.135, 0.2));
+    std::vector<ModelTriangle> model_triangles;
+    for (const auto& triangle : box_model_triangles) {
+        model_triangles.emplace_back(triangle);
+    }
+    for (const auto& triangle : sphere_model_triangles) {
+        model_triangles.emplace_back(triangle);
+    }
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
@@ -995,7 +1010,7 @@ int main(int argc, char *argv[]) {
     bool is_rotate = false;
     int render_mode = 0;
     float lightX = 0.0;
-    float lightY = 0.7;
+    float lightY = 0.5;
     float lightZ = 0.3;
     glm::vec3 lightSource = {lightX, lightY, lightZ};
     thisLightCluster = lightCluster(lightSource, 5, 0.1);
