@@ -656,7 +656,6 @@ float softShadowParam(glm::vec3 point,
                       const std::vector<ModelTriangle>& triangles,
                       const RayTriangleIntersection& intersection) {
     int lightNumber = 0;
-    int glassLightNumber = 0;
     for (int i = 0; i < int (thisLightCluster.size()); ++i) {
         glm::vec3 light = thisLightCluster[i];
         glm::vec3 fromLightDirection = glm::normalize(point - light);
@@ -667,7 +666,7 @@ float softShadowParam(glm::vec3 point,
         if (intersection.triangleIndex == lightIntersection.triangleIndex) {
             lightNumber = lightNumber + 1;
         } else if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) {
-            //glassLightNumber += 1;
+            return 0.7;
         }
     }
         return float (lightNumber) / float (thisLightCluster.size());
