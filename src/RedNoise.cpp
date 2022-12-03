@@ -24,6 +24,8 @@ Colour colour_buffer[WIDTH][HEIGHT];
 enum shadingType {Flat, Gourand, Phong, Nicht};
 int shading = Flat;
 bool isSoftShadow = false;
+std::vector<glm::vec3> vertices;
+glm::vec3 sphereCentre;
 // corresponding texture file name
 std::map<std::string, TextureMap> textureFilename;
 std::vector<glm::vec3> thisLightCluster;
@@ -100,8 +102,8 @@ std::vector<ModelTriangle> read_OBJ_files(const std::string& file_name,
 
     std::string current_line;
     std::ifstream MyReadFile(file_name);
-    std::vector<glm::vec3> vertices;
     std::vector<TexturePoint> textureVertices;
+    vertices = std::vector<glm::vec3>();
     std::vector<ModelTriangle> triangles;
     Colour current_colour;
     std::map<std::string, Colour> colour_palette = read_colour_palette(colour_file_name);
@@ -696,6 +698,10 @@ Colour shootRay(glm::vec3 cameraPosition,
         targetColour = Colour {int(red), int(green), int (blue)};
     }
 
+    if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
+
+    }
+
     if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                                       triangles,
@@ -984,6 +990,19 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 //    camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
 //}
 
+void calculateSphereCentre() {
+    glm::vec3 v1 = vertices[0], v2 = vertices[10], v3 = vertices[20], v4 = vertices[30];
+
+    glm::mat3 A = 2.0f * glm::mat3 {glm::vec3 {v2.x -v1.x, v3.x - v2.x, v4.x - v3.x},
+                   glm::vec3 {v2.y - v1.y, v3.y - v2.y, v4.y - v3.y},
+                   glm::vec3 {v2.z - v1.z, v3.z - v2.z, v4.z - v3.z}};
+
+    glm::vec3 beta = -1.0f * glm::vec3 {v1.x*v1.x - v2.x*v2.x + v1.y*v1.y - v2.y*v2.y + v1.z*v1.z - v2.z*v2.z,
+                                        v2.x*v2.x - v3.x*v3.x + v2.y*v2.y - v3.y*v3.y + v2.z*v2.z - v3.z*v3.z,
+                                        v3.x*v3.x - v4.x*v4.x + v3.y*v3.y - v4.y*v4.y + v3.z*v3.z - v4.z*v4.z};
+    sphereCentre = glm::inverse(A) * beta;
+}
+
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
@@ -995,6 +1014,7 @@ int main(int argc, char *argv[]) {
                                                                        "../textured-cornell-box.mtl",
                                                                        0.35,
                                                                        glm::vec3(-0.4, -1.135, 0.2));
+    textureFilename["mars"] = TextureMap("../mars.ppm");
     std::vector<ModelTriangle> model_triangles;
     for (const auto& triangle : box_model_triangles) {
         model_triangles.emplace_back(triangle);
@@ -1002,6 +1022,8 @@ int main(int argc, char *argv[]) {
     for (const auto& triangle : sphere_model_triangles) {
         model_triangles.emplace_back(triangle);
     }
+    calculateSphereCentre();
+    std::cout << glm::to_string(sphereCentre) << std::endl;
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
     float x_rotate_radian = 0;
