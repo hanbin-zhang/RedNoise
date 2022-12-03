@@ -699,7 +699,25 @@ Colour shootRay(glm::vec3 cameraPosition,
     }
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
+        TextureMap textureMap = textureFilename["mars"];
+        glm::vec3 spherePoint = (intersection.intersectionPoint - sphereCentre) / 0.35f;
+        float faiz = atan2(spherePoint.z, spherePoint.x);
+        float theta = asin(spherePoint.y);
 
+        float u = 1.0f - (faiz + M_PI) / (2.0f*M_PI);
+        float v = (theta + M_PI/2.0f) / M_PI;
+
+        int x = int (u * textureMap.width);
+        int y = int ((1-v) * textureMap.height);
+
+        uint32_t colourInt = textureMap.pixels[x +
+                                               y * textureMap.width];
+        unsigned  mask;
+        mask = 0xff;
+        uint32_t red = (colourInt >> 16) & mask;
+        uint32_t green = (colourInt >> 8) & mask;
+        uint32_t blue = (colourInt) & mask;
+        targetColour = Colour {int(red), int(green), int (blue)};
     }
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 7, "Magenta")==0) {
