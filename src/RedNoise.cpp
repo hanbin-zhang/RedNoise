@@ -483,7 +483,7 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                                               vertex, 20.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)) + 0.2f, 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)), 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -783,15 +783,15 @@ Colour shootRay(glm::vec3 cameraPosition,
     // shadow
 
     float light_param;
-    if (shading == Flat)
+    if (shading == Phong || intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0)
+        light_param = phongLight(triangles, intersection,
+                                 lightSource, cameraPosition);
+    else if (shading == Flat)
         light_param = lightParam(lightSource, cameraPosition, intersection.intersectionPoint,
                                  triangles, intersection.intersectedTriangle.normal);
     else if (shading == Gourand)
         light_param = gouraudLight(triangles, intersection,
                                    lightSource, cameraPosition);
-    else if (shading == Phong)
-        light_param = phongLight(triangles, intersection,
-                                 lightSource, cameraPosition);
     else if (shading == Nicht) light_param = 1;
 
     if (isSoftShadow) {
@@ -806,8 +806,12 @@ Colour shootRay(glm::vec3 cameraPosition,
         RayTriangleIntersection lightIntersection =
                 getClosestIntersection(lightSource, fromLightDirection, triangles);
 
-        if (intersection.triangleIndex == lightIntersection.triangleIndex) {
-
+        if (intersection.triangleIndex == lightIntersection.triangleIndex ||
+                intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
+            if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
+                light_param = glm::clamp<float>(light_param + 0.3f, 0.0, 1.0);
+                std::cout << light_param << std::endl;
+            }
             targetColour = Colour(targetColour.red * (light_param),
                                   (targetColour.green) * (light_param),
                                   (targetColour.blue) * (light_param)
