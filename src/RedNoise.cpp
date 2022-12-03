@@ -1013,7 +1013,7 @@ int main(int argc, char *argv[]) {
     std::vector<ModelTriangle> sphere_model_triangles = read_OBJ_files("../sphere.obj",
                                                                        "../textured-cornell-box.mtl",
                                                                        0.35,
-                                                                       glm::vec3(-0.4, -1.135, 0.2));
+                                                                       glm::vec3(-0.5, -1.1349, 0.0));
     textureFilename["mars"] = TextureMap("../mars.ppm");
     std::vector<ModelTriangle> model_triangles;
     for (const auto& triangle : box_model_triangles) {
