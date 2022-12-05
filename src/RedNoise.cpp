@@ -26,6 +26,7 @@ int shading = Flat;
 bool isSoftShadow = false;
 float sphereRotateRadian = 0.0f;
 std::vector<glm::vec3> vertices;
+bool isSphereRotation = false;
 float x_rotate_radian = 0;
 float y_rotate_radian = 0;
 glm::vec3 sphereCentre;
@@ -659,6 +660,7 @@ float softShadowParam(glm::vec3 point,
                       const std::vector<ModelTriangle>& triangles,
                       const RayTriangleIntersection& intersection) {
     int lightNumber = 0;
+    int glassLightNumber = 0;
     for (int i = 0; i < int (thisLightCluster.size()); ++i) {
         glm::vec3 light = thisLightCluster[i];
         glm::vec3 fromLightDirection = glm::normalize(point - light);
@@ -669,10 +671,10 @@ float softShadowParam(glm::vec3 point,
         if (intersection.triangleIndex == lightIntersection.triangleIndex) {
             lightNumber = lightNumber + 1;
         } else if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) {
-            return 0.78;
+            glassLightNumber += 1;
         }
     }
-        return float (lightNumber) / float (thisLightCluster.size());
+        return (float (lightNumber) + (float (glassLightNumber) * 0.4f))/ float (thisLightCluster.size());
 }
 
 glm::vec3 sphereRotation(glm::vec3 point) {
@@ -682,6 +684,14 @@ glm::vec3 sphereRotation(glm::vec3 point) {
     glm::vec3 shiftedPoint = point - sphereCentre;
     shiftedPoint = rotation * shiftedPoint;
     return shiftedPoint + sphereCentre;
+}
+
+Colour addGlassColour(Colour originalColour) {
+    return {
+        glm::clamp<int>(originalColour.red-3, 0, 255),
+        glm::clamp<int>(originalColour.green+3, 0, 255),
+        glm::clamp<int>(originalColour.blue-3, 0, 255),
+    };
 }
 
 Colour shootRay(glm::vec3 cameraPosition,
@@ -745,7 +755,7 @@ Colour shootRay(glm::vec3 cameraPosition,
                                 recurrentNumber+1);
     } else if (intersection.intersectedTriangle.colour.name.compare(0, 3, "Red")==0) {
 
-
+        Colour totalColour;
         glm::vec3 reflection = mirror(intersection.intersectionPoint,
                                       triangles,
                                       cameraPosition,
@@ -765,33 +775,34 @@ Colour shootRay(glm::vec3 cameraPosition,
                                              refractiveIndex);
 
         if (refractDirection == glm::vec3(0, 0, 0)) {
-            return reflectionColour;
-        }
-
-        float incidentAngle = glm::dot(rayDirection, intersection.intersectedTriangle.normal);
-        glm::vec3 updatePoint;
-
-        if (incidentAngle < 0) {
-            updatePoint = intersection.intersectionPoint - intersection.intersectedTriangle.normal * 0.0001f;
+            totalColour = reflectionColour;
         } else {
-            updatePoint = intersection.intersectionPoint + intersection.intersectedTriangle.normal * 0.0001f;
+            float incidentAngle = glm::dot(rayDirection, intersection.intersectedTriangle.normal);
+            glm::vec3 updatePoint;
+
+            if (incidentAngle < 0) {
+                updatePoint = intersection.intersectionPoint - intersection.intersectedTriangle.normal * 0.0001f;
+            } else {
+                updatePoint = intersection.intersectionPoint + intersection.intersectedTriangle.normal * 0.0001f;
+            }
+
+            Colour refraColour = shootRay(updatePoint,
+                                          refractDirection,
+                                          lightSource,
+                                          triangles,
+                                          recurrentNumber+1);
+
+            float reflectiveConst = fresnelLaw(rayDirection,
+                                               intersection.intersectedTriangle.normal, refractiveIndex);
+            float refractiveConst = 1 - reflectiveConst;
+
+            Colour doubleRcolour;
+            doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
+            doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
+            doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
+            totalColour = doubleRcolour;
         }
-
-        Colour refraColour = shootRay(updatePoint,
-                                      refractDirection,
-                                      lightSource,
-                                      triangles,
-                                      recurrentNumber+1);
-
-        float reflectiveConst = fresnelLaw(rayDirection,
-                                           intersection.intersectedTriangle.normal, refractiveIndex);
-        float refractiveConst = 1 - reflectiveConst;
-
-        Colour doubleRcolour;
-        doubleRcolour.red = (reflectiveConst * reflectionColour.red) + (refractiveConst * refraColour.red);
-        doubleRcolour.green = (reflectiveConst * reflectionColour.green) + (refractiveConst * refraColour.green);
-        doubleRcolour.blue = (reflectiveConst * reflectionColour.blue) + (refractiveConst * refraColour.blue);
-        return doubleRcolour;
+        return addGlassColour(totalColour);
     }
     // shadow
 
@@ -808,11 +819,20 @@ Colour shootRay(glm::vec3 cameraPosition,
     else if (shading == Nicht) light_param = 1;
 
     if (isSoftShadow) {
-        float ssParam = softShadowParam(intersection.intersectionPoint, triangles, intersection);
-        ssParam = glm::clamp<float>(ssParam + 0.2, 0.0f, 1.0f);
-        targetColour = Colour(targetColour.red * (light_param) * ssParam,
-                              (targetColour.green) * (light_param) * ssParam,
-                              (targetColour.blue) * (light_param)* ssParam);
+
+        if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
+            light_param = glm::clamp<float>(light_param + 0.3f, 0.0, 1.0);
+            targetColour = Colour(targetColour.red * (light_param),
+                                  (targetColour.green) * (light_param),
+                                  (targetColour.blue) * (light_param));
+        } else {
+            float ssParam = softShadowParam(intersection.intersectionPoint, triangles, intersection);
+            ssParam = glm::clamp<float>(ssParam + 0.2, 0.0f, 1.0f);
+            targetColour = Colour(targetColour.red * (light_param) * ssParam,
+                                  (targetColour.green) * (light_param) * ssParam,
+                                  (targetColour.blue) * (light_param)* ssParam);
+        }
+
     } else {
         glm::vec3 fromLightDirection = glm::normalize(intersection.intersectionPoint - lightSource);
 
@@ -830,8 +850,8 @@ Colour shootRay(glm::vec3 cameraPosition,
             );
         } else {
             float shadowPram;
-            if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) shadowPram = 0.45;
-            else shadowPram = 0.2;
+            if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) shadowPram = 0.3;
+            else shadowPram = 0.1;
 
             targetColour = Colour(float(targetColour.red) * shadowPram,
                                   float(targetColour.green) * shadowPram,
@@ -1009,10 +1029,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_2) shading = Gourand;
         else if (event.key.keysym.sym == SDLK_3) shading = Phong;
         else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
-        else if (event.key.keysym.sym == SDLK_o) {
-            sphereRotateRadian += float (M_PI/90);
-            if (sphereRotateRadian > M_PI) sphereRotateRadian = 0;
-        }
+        else if (event.key.keysym.sym == SDLK_o) isSphereRotation = !isSphereRotation;
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
@@ -1095,7 +1112,10 @@ int main(int argc, char *argv[]) {
             if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
             orbiting_radian += M_PI / 144;
         }
-
+        if (isSphereRotation) {
+            sphereRotateRadian += float (M_PI/45);
+            if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
+        }
         switch (render_mode) {
             case 1:
                 Rasterised_render(window, model_triangles,
