@@ -30,6 +30,7 @@ bool isSphereRotation = false;
 float x_rotate_radian = 0;
 float y_rotate_radian = 0;
 glm::vec3 sphereCentre;
+glm::vec3 sphereShift = {0, 0, 0};
 // corresponding texture file name
 std::map<std::string, TextureMap> textureFilename;
 std::vector<glm::vec3> thisLightCluster;
@@ -694,6 +695,29 @@ Colour addGlassColour(Colour originalColour) {
     };
 }
 
+Colour sphereTexture(glm::vec3 intersectionPoint) {
+    TextureMap textureMap = textureFilename["mars"];
+    glm::vec3 modelPoint = sphereRotation(intersectionPoint);
+    glm::vec3 spherePoint = (modelPoint - sphereCentre) / 0.35f;
+    float faiz = atan2(spherePoint.z, spherePoint.x);
+    float theta = asin(spherePoint.y);
+
+    float u = 1.0f - (faiz + M_PI) / (2.0f*M_PI);
+    float v = (theta + M_PI/2.0f) / M_PI;
+
+    int x = int (u * textureMap.width);
+    int y = int ((1-v) * textureMap.height);
+
+    uint32_t colourInt = textureMap.pixels[x +
+                                           y * textureMap.width];
+    unsigned  mask;
+    mask = 0xff;
+    uint32_t red = (colourInt >> 16) & mask;
+    uint32_t green = (colourInt >> 8) & mask;
+    uint32_t blue = (colourInt) & mask;
+    return Colour {int(red), int(green), int (blue)};
+}
+
 Colour shootRay(glm::vec3 cameraPosition,
                 glm::vec3 rayDirection,
                 glm::vec3 lightSource,
@@ -871,6 +895,7 @@ void rayTracingRender(DrawingWindow &window,
                       float orbiting_radian,
                       glm::vec3 lightSource
                       ) {
+
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
@@ -1030,6 +1055,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_3) shading = Phong;
         else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
         else if (event.key.keysym.sym == SDLK_o) isSphereRotation = !isSphereRotation;
+        else if (event.key.keysym.sym == SDLK_9) sphereShift.y += 0.1;
+        else if (event.key.keysym.sym == SDLK_0) sphereShift.y -= 0.1;;
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
