@@ -745,8 +745,11 @@ Colour shootRay(glm::vec3 cameraPosition,
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
         TextureMap textureMap = textureFilename["mars"];
+
         glm::vec3 modelPoint = sphereRotation(intersection.intersectionPoint);
-        glm::vec3 spherePoint = (modelPoint - sphereCentre) / 0.35f;
+        modelPoint += sphereShift;
+        glm::vec3 currentSphereCentre = sphereCentre + sphereShift;
+        glm::vec3 spherePoint = (modelPoint - currentSphereCentre) / 0.35f;
         float faiz = atan2(spherePoint.z, spherePoint.x);
         float theta = asin(spherePoint.y);
 
@@ -1027,7 +1030,8 @@ void Rasterised_render(DrawingWindow &window,
 
 void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
                  float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
-                 float* lightX, float* lightY, float* lightZ) {
+                 float* lightX, float* lightY, float* lightZ,
+                 std::vector<ModelTriangle>* modelTriangles) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
@@ -1056,7 +1060,9 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
         else if (event.key.keysym.sym == SDLK_o) isSphereRotation = !isSphereRotation;
         else if (event.key.keysym.sym == SDLK_9) sphereShift.y += 0.1;
-        else if (event.key.keysym.sym == SDLK_0) sphereShift.y -= 0.1;;
+        else if (event.key.keysym.sym == SDLK_0) {
+            sphereShift.y -= 0.1;
+        }
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
@@ -1113,7 +1119,8 @@ int main(int argc, char *argv[]) {
         lightSource = {lightX, lightY, lightZ};
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
-                                                          &is_rotate, &render_mode ,&lightX, &lightY, &lightZ);
+                                                          &is_rotate, &render_mode ,&lightX, &lightY, &lightZ,
+                                                          &model_triangles);
         window.clearPixels();
 
         //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
@@ -1125,6 +1132,7 @@ int main(int argc, char *argv[]) {
             sphereRotateRadian += float (M_PI/45);
             if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
         }
+
         switch (render_mode) {
             case 1:
                 Rasterised_render(window, model_triangles,
