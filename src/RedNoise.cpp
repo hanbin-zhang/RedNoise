@@ -15,8 +15,8 @@
 #include "ModelTriangle.h"
 #include "glm/gtx/string_cast.hpp"
 
-#define WIDTH 1280
-#define HEIGHT 960
+#define WIDTH 320
+#define HEIGHT 240
 
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
@@ -24,7 +24,10 @@ Colour colour_buffer[WIDTH][HEIGHT];
 enum shadingType {Flat, Gourand, Phong, Nicht};
 int shading = Flat;
 bool isSoftShadow = false;
+float sphereRotateRadian = 0.0f;
 std::vector<glm::vec3> vertices;
+float x_rotate_radian = 0;
+float y_rotate_radian = 0;
 glm::vec3 sphereCentre;
 // corresponding texture file name
 std::map<std::string, TextureMap> textureFilename;
@@ -672,6 +675,15 @@ float softShadowParam(glm::vec3 point,
         return float (lightNumber) / float (thisLightCluster.size());
 }
 
+glm::vec3 sphereRotation(glm::vec3 point) {
+    glm::mat3 rotation ={cos(sphereRotateRadian), 0, sin(sphereRotateRadian),
+                         0, 1, 0,
+                         -sin(sphereRotateRadian), 0, cos(sphereRotateRadian)};
+    glm::vec3 shiftedPoint = point - sphereCentre;
+    shiftedPoint = rotation * shiftedPoint;
+    return shiftedPoint + sphereCentre;
+}
+
 Colour shootRay(glm::vec3 cameraPosition,
                 glm::vec3 rayDirection,
                 glm::vec3 lightSource,
@@ -699,7 +711,8 @@ Colour shootRay(glm::vec3 cameraPosition,
 
     if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
         TextureMap textureMap = textureFilename["mars"];
-        glm::vec3 spherePoint = (intersection.intersectionPoint - sphereCentre) / 0.35f;
+        glm::vec3 modelPoint = sphereRotation(intersection.intersectionPoint);
+        glm::vec3 spherePoint = (modelPoint - sphereCentre) / 0.35f;
         float faiz = atan2(spherePoint.z, spherePoint.x);
         float theta = asin(spherePoint.y);
 
@@ -810,7 +823,6 @@ Colour shootRay(glm::vec3 cameraPosition,
                 intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
             if (intersection.intersectedTriangle.colour.name.compare(0, 5, "Green")==0) {
                 light_param = glm::clamp<float>(light_param + 0.3f, 0.0, 1.0);
-                std::cout << light_param << std::endl;
             }
             targetColour = Colour(targetColour.red * (light_param),
                                   (targetColour.green) * (light_param),
@@ -843,6 +855,13 @@ void rayTracingRender(DrawingWindow &window,
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
 
+    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
+                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
+                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
+
+    glm::mat3 y_rotate ={cos(y_rotate_radian), 0, sin(y_rotate_radian),
+                        0, 1, 0,
+                        -sin(y_rotate_radian), 0, cos(y_rotate_radian)};
     cameraPosition = cameraPosition * orbiting;
 
     glm::mat3 camera_orbit_orientation = lookAt(cameraPosition);
@@ -853,8 +872,10 @@ void rayTracingRender(DrawingWindow &window,
             float y = -1 * (float(v) - float(HEIGHT) / 2) / scaling ;
             glm::vec3 image_plane_vertex = glm::vec3{x + cameraPosition.x, y + cameraPosition.y,
                                                      cameraPosition.z - focalLength};
+            //image_plane_vertex = y_rotate * image_plane_vertex;
             glm::vec3 imagePlaneDirection = glm::normalize(image_plane_vertex - cameraPosition);
-
+            imagePlaneDirection = y_rotate * imagePlaneDirection;
+            imagePlaneDirection = x_rotate_mat * imagePlaneDirection;
             imagePlaneDirection = glm::normalize(imagePlaneDirection  * glm::inverse(camera_orbit_orientation) );
 
             Colour colour = shootRay(cameraPosition,
@@ -967,10 +988,12 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
 		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += -0.1;
 		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += 0.1;
-        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (M_PI/180);
-        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/180);
-        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (M_PI/180);
-        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (M_PI/180);
+        else if (event.key.keysym.sym == SDLK_i) camera_position->z += -0.1;
+        else if (event.key.keysym.sym == SDLK_k) camera_position->z += 0.1;
+        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (M_PI/90);
         else if (event.key.keysym.sym == SDLK_p) *is_rotate = ! *is_rotate;
         else if (event.key.keysym.sym == SDLK_r) *render_mode = 0;
         else if (event.key.keysym.sym == SDLK_t) *render_mode = 1;
@@ -986,6 +1009,10 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_2) shading = Gourand;
         else if (event.key.keysym.sym == SDLK_3) shading = Phong;
         else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
+        else if (event.key.keysym.sym == SDLK_o) {
+            sphereRotateRadian += float (M_PI/90);
+            if (sphereRotateRadian > M_PI) sphereRotateRadian = 0;
+        }
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
@@ -1044,11 +1071,9 @@ int main(int argc, char *argv[]) {
         model_triangles.emplace_back(triangle);
     }
     calculateSphereCentre();
-    std::cout << glm::to_string(sphereCentre) << std::endl;
     glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
     float focal_length = 2.0;
-    float x_rotate_radian = 0;
-    float y_rotate_radian = 0;
+
     float orbiting_radian = 0;
     bool is_rotate = false;
     int render_mode = 0;
