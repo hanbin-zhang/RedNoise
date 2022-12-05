@@ -747,8 +747,9 @@ Colour shootRay(glm::vec3 cameraPosition,
         TextureMap textureMap = textureFilename["mars"];
 
         glm::vec3 modelPoint = sphereRotation(intersection.intersectionPoint);
-        modelPoint += sphereShift;
-        glm::vec3 currentSphereCentre = sphereCentre + sphereShift;
+//        modelPoint += sphereShift;
+//        glm::vec3 currentSphereCentre = sphereCentre + sphereShift;
+        glm::vec3 currentSphereCentre = sphereCentre;
         glm::vec3 spherePoint = (modelPoint - currentSphereCentre) / 0.35f;
         float faiz = atan2(spherePoint.z, spherePoint.x);
         float theta = asin(spherePoint.y);
@@ -891,14 +892,22 @@ Colour shootRay(glm::vec3 cameraPosition,
 
 
 void rayTracingRender(DrawingWindow &window,
-                      const std::vector<ModelTriangle>& model_triangles,
+                      std::vector<ModelTriangle>& model_triangles,
                       glm::vec3 cameraPosition,
                       float focalLength,
                       float scaling,
                       float orbiting_radian,
                       glm::vec3 lightSource
                       ) {
-
+    sphereCentre += sphereShift;
+    for (int i = 0; i < int(model_triangles.size()); ++i) {
+        if(model_triangles[i].colour.name.compare(0, 5, "Green")==0) {
+            model_triangles[i].vertices[0] += sphereShift;
+            model_triangles[i].vertices[1] += sphereShift;
+            model_triangles[i].vertices[2] += sphereShift;
+        }
+    }
+    sphereShift.y = 0;
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
