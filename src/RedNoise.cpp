@@ -1037,24 +1037,6 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
 	}
 }
 
-//void calculate_camera_orientation(float x_rotate_radian, float y_rotate_radian) {
-//    camera_orientation = {glm::vec3 {1, 0, 0},
-//                          glm::vec3 {0, 1, 0},
-//                          glm::vec3 {0, 0, 1},};
-//
-//    glm::mat3 x_rotate_mat= {glm::vec3{1, 0, 0},
-//                             glm::vec3{0, cos(x_rotate_radian), -sin(x_rotate_radian)},
-//                             glm::vec3{0, sin(x_rotate_radian), cos(x_rotate_radian)}};
-//
-//    glm::mat3 y_rotate_mat= {glm::vec3{cos(y_rotate_radian), 0, sin(y_rotate_radian)},
-//                             glm::vec3{0, 1, 0},
-//                             glm::vec3{-sin(y_rotate_radian), 0, cos(x_rotate_radian)}};
-//
-//    glm::vec3 camera_position;
-//
-//    camera_orientation = x_rotate_mat * y_rotate_mat * camera_orientation;
-//}
-
 void calculateSphereCentre() {
     glm::vec3 v1 = vertices[0], v2 = vertices[10], v3 = vertices[20], v4 = vertices[30];
 
