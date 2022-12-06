@@ -27,7 +27,7 @@ glm::vec3 lightSource = {lightX, lightY, lightZ};
 float orbiting_radian = 0;
 glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
 float focal_length = 2.0;
-int number = 105;
+int number = 126;
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
