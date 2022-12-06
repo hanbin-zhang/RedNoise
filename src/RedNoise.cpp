@@ -18,7 +18,6 @@
 #define WIDTH 640
 #define HEIGHT 480
 
-std::vector<ModelTriangle> model_triangles;
 int render_mode = 0;
 float lightX = 0.0;
 float lightY = 0.5;
@@ -1025,9 +1024,98 @@ void Rasterised_render(DrawingWindow &window,
     }
 }
 
+//void textureMapper(DrawingWindow &window, CanvasTriangle canvasTriangle, TextureMap textureMap) {
+//    std::array<CanvasPoint, 3> vertices = canvasTriangle.vertices;
+//
+//     if (vertices[2].y < vertices[0].y) std::swap(vertices[2], vertices[0]);
+//     if (vertices[1].y < vertices[0].y) std::swap(vertices[0], vertices[1]);
+//     if (vertices[2].y < vertices[1].y) std::swap(vertices[2], vertices[1]);
+//
+//
+//    CanvasPoint midpoint = find_mid_point(vertices);
+//    std::array<CanvasPoint, 3> texture_vertices{
+//        CanvasPoint(vertices[0].texturePoint.x, vertices[0].texturePoint.y),
+//        CanvasPoint(vertices[1].texturePoint.x, vertices[1].texturePoint.y),
+//        CanvasPoint(vertices[2].texturePoint.x, vertices[2].texturePoint.y)
+//    };
+//    CanvasPoint mid_texture_point = find_mid_point(texture_vertices);
+//
+//
+//    midpoint.texturePoint = TexturePoint(mid_texture_point.x, mid_texture_point.y);
+//
+//    glm::mat3x3 affineMtx = calculate_affine_mtx(canvasTriangle);
+//    fill_half_texture_triangle(window, vertices[0], vertices[0], midpoint, vertices[1], textureMap, affineMtx);
+//    fill_half_texture_triangle(window,  midpoint, vertices[1], vertices[2], vertices[2],textureMap, affineMtx);
+//    draw_stroked_triangles(window, canvasTriangle, Colour(255, 255, 255));
+//}
+
+void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
+                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
+                 float* lightX, float* lightY, float* lightZ,
+                 float* orbitRadian) {
+	if (event.type == SDL_KEYDOWN) {
+		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
+		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
+		else if (event.key.keysym.sym == SDLK_UP) camera_position->y += -0.1;
+		else if (event.key.keysym.sym == SDLK_DOWN) camera_position->y += 0.1;
+        else if (event.key.keysym.sym == SDLK_i) camera_position->z += -0.1;
+        else if (event.key.keysym.sym == SDLK_k) camera_position->z += 0.1;
+        else if (event.key.keysym.sym == SDLK_w) *x_rotate += float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_s) *x_rotate -= float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_a) *y_rotate -= float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_d) *y_rotate += float (M_PI/90);
+        else if (event.key.keysym.sym == SDLK_p) *is_rotate = ! *is_rotate;
+        else if (event.key.keysym.sym == SDLK_r) *render_mode = 0;
+        else if (event.key.keysym.sym == SDLK_t) *render_mode = 1;
+        else if (event.key.keysym.sym == SDLK_y) *render_mode = 2;
+        else if (event.key.keysym.sym == SDLK_f) *lightX += 0.1;
+        else if (event.key.keysym.sym == SDLK_v) *lightX -= 0.1;
+        else if (event.key.keysym.sym == SDLK_g) *lightY += 0.1;
+        else if (event.key.keysym.sym == SDLK_b) *lightY -= 0.1;
+        else if (event.key.keysym.sym == SDLK_h) *lightZ += 0.1;
+        else if (event.key.keysym.sym == SDLK_n) *lightZ -= 0.1;
+        else if (event.key.keysym.sym == SDLK_c) isSoftShadow = !isSoftShadow;
+        else if (event.key.keysym.sym == SDLK_1) shading = Flat;
+        else if (event.key.keysym.sym == SDLK_2) shading = Gourand;
+        else if (event.key.keysym.sym == SDLK_3) shading = Phong;
+        else if (event.key.keysym.sym == SDLK_4) shading = Nicht;
+        else if (event.key.keysym.sym == SDLK_o) isSphereRotation = !isSphereRotation;
+        else if (event.key.keysym.sym == SDLK_9) sphereShift.y += 0.1;
+        else if (event.key.keysym.sym == SDLK_0) {
+            sphereShift.y -= 0.1;
+        }
+        else if (event.key.keysym.sym == SDLK_8) *orbitRadian = 0;
+        else if (event.key.keysym.sym == SDLK_7){
+            sphereRotateRadian += float (M_PI/12);
+            if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
+        }
+
+    } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        std::string name = "output";
+        name.append(std::to_string(number));
+        name.append(".ppm");
+        window.savePPM(name);
+        std::cout << std::to_string(number) << std::endl;
+        number++;
+	}
+}
+
+void calculateSphereCentre() {
+    glm::vec3 v1 = vertices[0], v2 = vertices[10], v3 = vertices[20], v4 = vertices[30];
+
+    glm::mat3 A = 2.0f * glm::mat3 {glm::vec3 {v2.x -v1.x, v3.x - v2.x, v4.x - v3.x},
+                   glm::vec3 {v2.y - v1.y, v3.y - v2.y, v4.y - v3.y},
+                   glm::vec3 {v2.z - v1.z, v3.z - v2.z, v4.z - v3.z}};
+
+    glm::vec3 beta = -1.0f * glm::vec3 {v1.x*v1.x - v2.x*v2.x + v1.y*v1.y - v2.y*v2.y + v1.z*v1.z - v2.z*v2.z,
+                                        v2.x*v2.x - v3.x*v3.x + v2.y*v2.y - v3.y*v3.y + v2.z*v2.z - v3.z*v3.z,
+                                        v3.x*v3.x - v4.x*v4.x + v3.y*v3.y - v4.y*v4.y + v3.z*v3.z - v4.z*v4.z};
+    sphereCentre = glm::inverse(A) * beta;
+}
+
 void drawFrame(DrawingWindow &window, int render_mode,
                std::vector<ModelTriangle> model_triangles
-) {
+               ) {
     window.clearPixels();
 
     switch (render_mode) {
@@ -1055,159 +1143,6 @@ void drawFrame(DrawingWindow &window, int render_mode,
     }
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
-                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
-                 float* lightX, float* lightY, float* lightZ,
-                 float* orbitRadian) {
-	if (event.type == SDL_KEYDOWN) {
-		if (event.key.keysym.sym == SDLK_LEFT) {
-            camera_position->x += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-		else if (event.key.keysym.sym == SDLK_RIGHT) {
-            camera_position->x += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-		else if (event.key.keysym.sym == SDLK_UP) {
-            camera_position->y += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-		else if (event.key.keysym.sym == SDLK_DOWN) {
-            camera_position->y += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_i) {
-            camera_position->z += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_k) {
-            camera_position->z += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_w) {
-            *x_rotate += float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_s) {
-            *x_rotate -= float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_a) {
-            *y_rotate -= float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_d) {
-            *y_rotate += float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_p) {
-            *is_rotate = ! *is_rotate;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_r) {
-            *render_mode = 0;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_t) {
-            *render_mode = 1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_y) {
-            *render_mode = 2;
-            drawFrame(window, *render_mode, model_triangles);
-
-        }
-        else if (event.key.keysym.sym == SDLK_f) {
-            *lightX += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-
-        }
-        else if (event.key.keysym.sym == SDLK_v) {
-            *lightX -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-
-        }
-        else if (event.key.keysym.sym == SDLK_g) {
-            *lightY += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_b) {
-            *lightY -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_h) {
-            *lightZ += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_n) {
-            *lightZ -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_c) {
-            isSoftShadow = !isSoftShadow;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_1) {
-            shading = Flat;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_2) {
-            shading = Gourand;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_3) {
-            shading = Phong;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_4) {
-            shading = Nicht;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_o) {
-            isSphereRotation = !isSphereRotation;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_9) {
-            sphereShift.y += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_0) {
-            sphereShift.y -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_8) {
-            *orbitRadian = 0;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_7){
-            sphereRotateRadian += float (M_PI/12);
-            if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-
-    } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-        std::string name = "output";
-        name.append(std::to_string(number));
-        name.append(".ppm");
-        window.savePPM(name);
-        std::cout << std::to_string(number) << std::endl;
-        number++;
-	}
-}
-
-void calculateSphereCentre() {
-    glm::vec3 v1 = vertices[0], v2 = vertices[10], v3 = vertices[20], v4 = vertices[30];
-
-    glm::mat3 A = 2.0f * glm::mat3 {glm::vec3 {v2.x -v1.x, v3.x - v2.x, v4.x - v3.x},
-                   glm::vec3 {v2.y - v1.y, v3.y - v2.y, v4.y - v3.y},
-                   glm::vec3 {v2.z - v1.z, v3.z - v2.z, v4.z - v3.z}};
-
-    glm::vec3 beta = -1.0f * glm::vec3 {v1.x*v1.x - v2.x*v2.x + v1.y*v1.y - v2.y*v2.y + v1.z*v1.z - v2.z*v2.z,
-                                        v2.x*v2.x - v3.x*v3.x + v2.y*v2.y - v3.y*v3.y + v2.z*v2.z - v3.z*v3.z,
-                                        v3.x*v3.x - v4.x*v4.x + v3.y*v3.y - v4.y*v4.y + v3.z*v3.z - v4.z*v4.z};
-    sphereCentre = glm::inverse(A) * beta;
-}
-
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
@@ -1220,7 +1155,7 @@ int main(int argc, char *argv[]) {
                                                                        0.35,
                                                                        glm::vec3(-0.5, -1.1349, 0.0));
     textureFilename["mars"] = TextureMap("../mars.ppm");
-
+    std::vector<ModelTriangle> model_triangles;
     for (const auto& triangle : box_model_triangles) {
         model_triangles.emplace_back(triangle);
     }
@@ -1228,6 +1163,8 @@ int main(int argc, char *argv[]) {
         model_triangles.emplace_back(triangle);
     }
     calculateSphereCentre();
+
+
 
 
     bool is_rotate = false;
