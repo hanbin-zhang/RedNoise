@@ -18,7 +18,7 @@
 #define WIDTH 640
 #define HEIGHT 480
 
-int number = 74;
+int number = 0;
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
