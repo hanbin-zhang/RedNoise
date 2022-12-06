@@ -1040,7 +1040,7 @@ void Rasterised_render(DrawingWindow &window,
 void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
                  float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
                  float* lightX, float* lightY, float* lightZ,
-                 std::vector<ModelTriangle>* modelTriangles) {
+                 float* orbitRadian) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera_position->x += -0.1;
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera_position->x += 0.1;
@@ -1072,6 +1072,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
         else if (event.key.keysym.sym == SDLK_0) {
             sphereShift.y -= 0.1;
         }
+        else if (event.key.keysym.sym == SDLK_8) *orbitRadian = 0;
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
@@ -1129,7 +1130,7 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
                                                           &is_rotate, &render_mode ,&lightX, &lightY, &lightZ,
-                                                          &model_triangles);
+                                                          &orbiting_radian);
         window.clearPixels();
 
         //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
@@ -1138,7 +1139,7 @@ int main(int argc, char *argv[]) {
             orbiting_radian += M_PI / 144;
         }
         if (isSphereRotation) {
-            sphereRotateRadian += float (M_PI/45);
+            sphereRotateRadian += float (M_PI/6);
             if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
         }
 
