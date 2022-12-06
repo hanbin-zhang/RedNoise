@@ -27,7 +27,7 @@ glm::vec3 lightSource = {lightX, lightY, lightZ};
 float orbiting_radian = 0;
 glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
 float focal_length = 2.0;
-int number = 105;
+int number = 0;
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
@@ -920,7 +920,7 @@ void rayTracingRender(DrawingWindow &window,
             model_triangles[i].vertices[2] += sphereShift;
         }
     }
-    sphereShift.y = 0;
+    sphereShift = glm::vec3 {0, 0, 0};
     glm::mat3 orbiting =  {cos(orbiting_radian), 0, sin(orbiting_radian),
                            0, 1, 0,
                            -sin(orbiting_radian), 0, cos(orbiting_radian)};
@@ -1025,8 +1025,7 @@ void Rasterised_render(DrawingWindow &window,
     }
 }
 
-void drawFrame(DrawingWindow &window, int render_mode,
-               std::vector<ModelTriangle> model_triangles
+void drawFrame(DrawingWindow &window
 ) {
     window.clearPixels();
 
@@ -1056,133 +1055,122 @@ void drawFrame(DrawingWindow &window, int render_mode,
 }
 
 void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_position,
-                 float* x_rotate, float* y_rotate, bool* is_rotate, int* render_mode,
-                 float* lightX, float* lightY, float* lightZ,
+                 float* x_rotate, float* y_rotate, bool* is_rotate,
                  float* orbitRadian) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) {
             camera_position->x += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
 		else if (event.key.keysym.sym == SDLK_RIGHT) {
             camera_position->x += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
 		else if (event.key.keysym.sym == SDLK_UP) {
             camera_position->y += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
 		else if (event.key.keysym.sym == SDLK_DOWN) {
             camera_position->y += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_i) {
             camera_position->z += -0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_k) {
             camera_position->z += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_w) {
             *x_rotate += float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_s) {
             *x_rotate -= float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_a) {
             *y_rotate -= float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_d) {
             *y_rotate += float (M_PI/90);
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_p) {
             *is_rotate = ! *is_rotate;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_r) {
-            *render_mode = 0;
-            drawFrame(window, *render_mode, model_triangles);
+            render_mode = 0;
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_t) {
-            *render_mode = 1;
-            drawFrame(window, *render_mode, model_triangles);
+            render_mode = 1;
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_y) {
-            *render_mode = 2;
-            drawFrame(window, *render_mode, model_triangles);
+            render_mode = 2;
+            drawFrame(window);
 
-        }
-        else if (event.key.keysym.sym == SDLK_f) {
-            *lightX += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-
-        }
-        else if (event.key.keysym.sym == SDLK_v) {
-            *lightX -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-
-        }
-        else if (event.key.keysym.sym == SDLK_g) {
-            *lightY += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_b) {
-            *lightY -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_h) {
-            *lightZ += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
-        }
-        else if (event.key.keysym.sym == SDLK_n) {
-            *lightZ -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
         }
         else if (event.key.keysym.sym == SDLK_c) {
             isSoftShadow = !isSoftShadow;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_1) {
             shading = Flat;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_2) {
             shading = Gourand;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_3) {
             shading = Phong;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_4) {
             shading = Nicht;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_o) {
             isSphereRotation = !isSphereRotation;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_9) {
             sphereShift.y += 0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_0) {
             sphereShift.y -= 0.1;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
+        }
+        else if (event.key.keysym.sym == SDLK_f) {
+            sphereShift.x += 0.1;
+            drawFrame(window);
+        }
+        else if (event.key.keysym.sym == SDLK_v) {
+            sphereShift.x -= 0.1;
+            drawFrame(window);
+        }
+        else if (event.key.keysym.sym == SDLK_g) {
+            sphereShift.z += 0.1;
+            drawFrame(window);
+        }
+        else if (event.key.keysym.sym == SDLK_b) {
+            sphereShift.z -= 0.1;
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_8) {
             *orbitRadian = 0;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
         else if (event.key.keysym.sym == SDLK_7){
             sphereRotateRadian += float (M_PI/12);
             if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
-            drawFrame(window, *render_mode, model_triangles);
+            drawFrame(window);
         }
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
@@ -1234,12 +1222,12 @@ int main(int argc, char *argv[]) {
 
 
     thisLightCluster = lightCluster(lightSource, 5, 0.1);
-    drawFrame(window, render_mode, model_triangles);
+    drawFrame(window);
     while (true) {
 
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
-                                                          &is_rotate, &render_mode ,&lightX, &lightY, &lightZ,
+                                                          &is_rotate,
                                                           &orbiting_radian);
         window.renderFrame();
 	}
