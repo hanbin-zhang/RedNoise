@@ -15,9 +15,10 @@
 #include "ModelTriangle.h"
 #include "glm/gtx/string_cast.hpp"
 
-#define WIDTH 320
-#define HEIGHT 240
+#define WIDTH 640
+#define HEIGHT 480
 
+int number = 74;
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
 Colour colour_buffer[WIDTH][HEIGHT];
@@ -388,9 +389,13 @@ void fill_triangle(DrawingWindow &window, CanvasTriangle triangle, const Colour&
 }
 
 void draw_stroked_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour) {
-    draw_line(window, triangle.v0(), triangle.v1(), colour);
-    draw_line(window, triangle.v1(), triangle.v2(), colour);
-    draw_line(window, triangle.v2(), triangle.v0(), colour);
+//    draw_line(window, triangle.v0(), triangle.v1(), colour);
+//    draw_line(window, triangle.v1(), triangle.v2(), colour);
+//    draw_line(window, triangle.v2(), triangle.v0(), colour);
+    window.setPixelColour(size_t(round(triangle.v0().x)), size_t(round(triangle.v0().y)), colour_uint32(Colour{255, 255, 255}));
+    window.setPixelColour(size_t(round(triangle.v1().x)), size_t(round(triangle.v1().y)), colour_uint32(Colour{255, 255, 255}));
+    window.setPixelColour(size_t(round(triangle.v2().x)), size_t(round(triangle.v2().y)), colour_uint32(Colour{255, 255, 255}));
+
 }
 
 void draw_filled_triangles(DrawingWindow &window, CanvasTriangle triangle, const Colour& colour
@@ -456,16 +461,15 @@ float proximityParameter(glm::vec3 lightSource, glm::vec3 vertexPosition, float 
 
     // 1/4πr2
     float para = lightIntensity / float (4 * M_PI * distance * distance);
-    if (para <= 0.0) return 0.0;
+    /*if (para <= 0.0) return 0.0;
     else if (para > 1.0) return 1.0;
-    else return para;
+    else*/ return para;
 }
 
 float angleOfIncidentParam(glm::vec3 lightSource, glm::vec3 vertex,glm::vec3 targetNormal) {
     glm::vec3 toLightDirection = glm::normalize(lightSource - vertex);
-    return glm::clamp<float>(
-            glm::dot(targetNormal, toLightDirection),
-            0.0, 1.0);
+    return
+            glm::dot(targetNormal, toLightDirection);
 }
 
 glm::vec3 calculateReflection(glm::vec3 ri, glm::vec3 targetNormal) {
@@ -476,7 +480,7 @@ float specularParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 t
     glm::vec3 ri = glm::normalize(vertex - lightSource);
     glm::vec3 reflection = calculateReflection(ri, targetNormal);
     glm::vec3 view = glm::normalize(cameraPosition - vertex);
-    auto param = glm::clamp<float>(glm::dot(reflection, view), 0.0, 1.0);
+    auto param = pow(fmax(0, glm::dot(reflection, view)), 1024);
     return param;
 
 }
@@ -485,10 +489,10 @@ float lightParam(glm::vec3 lightSource, glm::vec3 cameraPosition, glm::vec3 vert
                  const std::vector<ModelTriangle>& model_triangles, glm::vec3 targetNormal) {
 
     float proximityParam = proximityParameter(lightSource,
-                                              vertex, 20.0);
+                                              vertex, 16.0);
     float aoIParam = angleOfIncidentParam( lightSource, vertex, targetNormal);
     float specularP = specularParam( lightSource, cameraPosition, targetNormal, vertex);
-    return glm::clamp<float>( proximityParam * aoIParam + float (pow(specularP, 512)), 0.0, 1.0);
+    return glm::clamp<float>( proximityParam * aoIParam + specularP, 0.0, 1.0);
 }
 
 float gouraudLight(const std::vector<ModelTriangle>& model_triangles,
@@ -878,7 +882,7 @@ Colour shootRay(glm::vec3 cameraPosition,
             );
         } else {
             float shadowPram;
-            if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) shadowPram = 0.3;
+            if (lightIntersection.intersectedTriangle.colour.name.compare(0, 3, "Red") == 0) shadowPram = 0.25;
             else shadowPram = 0.1;
 
             targetColour = Colour(float(targetColour.red) * shadowPram,
@@ -1073,10 +1077,18 @@ void handleEvent(SDL_Event event, DrawingWindow &window, glm::vec3* camera_posit
             sphereShift.y -= 0.1;
         }
         else if (event.key.keysym.sym == SDLK_8) *orbitRadian = 0;
+        else if (event.key.keysym.sym == SDLK_7){
+            sphereRotateRadian += float (M_PI/12);
+            if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
+        }
 
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-		window.savePPM("output.ppm");
-		window.saveBMP("output.bmp");
+        std::string name = "output";
+        name.append(std::to_string(number));
+        name.append(".ppm");
+        window.savePPM(name);
+        std::cout << std::to_string(number) << std::endl;
+        number++;
 	}
 }
 
@@ -1124,9 +1136,9 @@ int main(int argc, char *argv[]) {
     float lightZ = 0.3;
     glm::vec3 lightSource = {lightX, lightY, lightZ};
     thisLightCluster = lightCluster(lightSource, 5, 0.1);
-
+    lightSource = {lightX, lightY, lightZ};
     while (true) {
-        lightSource = {lightX, lightY, lightZ};
+
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
                                                           &is_rotate, &render_mode ,&lightX, &lightY, &lightZ,
@@ -1166,7 +1178,6 @@ int main(int argc, char *argv[]) {
                                   false);
                 break;
         }
-
         window.renderFrame();
 	}
 }
