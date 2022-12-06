@@ -18,14 +18,6 @@
 #define WIDTH 640
 #define HEIGHT 480
 
-int render_mode = 0;
-float lightX = 0.0;
-float lightY = 0.5;
-float lightZ = 0.3;
-glm::vec3 lightSource = {lightX, lightY, lightZ};
-float orbiting_radian = 0;
-glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
-float focal_length = 2.0;
 int number = 74;
 //glm::mat3 camera_orientation;
 float depth_buffer[WIDTH][HEIGHT];
@@ -1113,36 +1105,6 @@ void calculateSphereCentre() {
     sphereCentre = glm::inverse(A) * beta;
 }
 
-void drawFrame(DrawingWindow &window, int render_mode,
-               std::vector<ModelTriangle> model_triangles
-               ) {
-    window.clearPixels();
-
-    switch (render_mode) {
-        case 1:
-            Rasterised_render(window, model_triangles,
-                              initial_camera_position,
-                              focal_length, WIDTH / 2,
-                              orbiting_radian,
-                              true);
-            break;
-        case 2:
-            rayTracingRender(window, model_triangles,
-                             initial_camera_position,
-                             focal_length, WIDTH / 2,
-                             orbiting_radian,
-                             lightSource);
-            break;
-        default:
-            Rasterised_render(window, model_triangles,
-                              initial_camera_position,
-                              focal_length, WIDTH / 2,
-                              orbiting_radian,
-                              false);
-            break;
-    }
-}
-
 int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
@@ -1163,21 +1125,59 @@ int main(int argc, char *argv[]) {
         model_triangles.emplace_back(triangle);
     }
     calculateSphereCentre();
+    glm::vec3 initial_camera_position = glm::vec3(0.0, 0.0, 4.0);
+    float focal_length = 2.0;
 
-
-
-
+    float orbiting_radian = 0;
     bool is_rotate = false;
-
-
+    int render_mode = 0;
+    float lightX = 0.0;
+    float lightY = 0.5;
+    float lightZ = 0.3;
+    glm::vec3 lightSource = {lightX, lightY, lightZ};
     thisLightCluster = lightCluster(lightSource, 5, 0.1);
-    drawFrame(window, render_mode, model_triangles);
+    lightSource = {lightX, lightY, lightZ};
     while (true) {
 
 		if (window.pollForInputEvents(event)) handleEvent(event, window,
                                                           &initial_camera_position, &x_rotate_radian, &y_rotate_radian,
                                                           &is_rotate, &render_mode ,&lightX, &lightY, &lightZ,
                                                           &orbiting_radian);
+        window.clearPixels();
+
+        //calculate_camera_orientation(x_rotate_radian, y_rotate_radian);
+        if (is_rotate) {
+            if (orbiting_radian >= M_PI*2) orbiting_radian = 0;
+            orbiting_radian += M_PI / 144;
+        }
+        if (isSphereRotation) {
+            sphereRotateRadian += float (M_PI/6);
+            if (sphereRotateRadian > 2.0f*M_PI) sphereRotateRadian = 0;
+        }
+
+        switch (render_mode) {
+            case 1:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  true);
+                break;
+            case 2:
+                rayTracingRender(window, model_triangles,
+                                 initial_camera_position,
+                                 focal_length, WIDTH / 2,
+                                 orbiting_radian,
+                                 lightSource);
+                break;
+            default:
+                Rasterised_render(window, model_triangles,
+                                  initial_camera_position,
+                                  focal_length, WIDTH / 2,
+                                  orbiting_radian,
+                                  false);
+                break;
+        }
         window.renderFrame();
 	}
 }
